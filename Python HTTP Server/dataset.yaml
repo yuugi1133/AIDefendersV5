@@ -1,0 +1,9 @@
+path: Dataset
+
+train: images/train
+val: images/val
+
+names:
+  0: Enemy
+  1: Friendly_Chicken
+  2: Friendly_Deer

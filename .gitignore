@@ -73,3 +73,73 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+
+**/Library/
+
+
+
+# ==========================================
+# 이하는 파이썬 관련 기본 무시 항목
+# ==========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 가상 환경 (Virtual Environment)
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# C 확장 / 빌드 아티팩트
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+*.so
+
+# Jupyter Notebook 캐시
+.ipynb_checkpoints
+
+# 환경 변수 / 설정 파일 (API Key, 개인 설정 등)
+.env
+.env.local
+.vscode/
+.idea/
+
+# 테스트 및 커버리지
+.coverage
+htmlcov/
+.pytest_cache/
+
+
+# ==========================================
+# 2. YOLO / PyTorch / 데이터셋 관련 무시 항목
+# ==========================================
+# 학습된 가중치 / 모델 파일 (대용량 바이너리)
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+
+# YOLO 자동 생성 출력 및 결과 폴더 (Ultralytics 기준)
+runs/
+wandb/
+*.log
+
+# 데이터셋 (이미지 및 라벨 파일 - 용량이 크므로 Git 관리 제외)
+Dataset/
+datasets/
+data/*.zip
+data/images/
+data/labels/
+# ※ 만약 custom_data/ 내부에 이미지가 있다면:
+# custom_data/images/
+# custom_data/labels/
