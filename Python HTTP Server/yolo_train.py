@@ -9,7 +9,7 @@ def main():
         epochs=30,
         imgsz=640,
         batch=32,
-        workers=0
+        workers=4
     )
 
 if __name__ == "__main__":

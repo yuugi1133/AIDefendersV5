@@ -9,12 +9,12 @@ public class AIInputCapture : MonoBehaviour
     public Camera cctvCamera;
     public RenderTexture renderTexture;
 
-    public float CaptureDelay = 0.1f; //1ÃÊ´ç Âû¿µ ¼Óµµ
+    public float CaptureDelay = 0.1f; //1ï¿½Ê´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Óµï¿½
 
     Texture2D screenTexture;
 
 
-    public Action<DetectionResponse> OnDetectionReceived; //ÀÌº¥Æ®:
+    public Action<DetectionResponse> OnDetectionReceived; //ï¿½Ìºï¿½Æ®:
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -103,12 +103,12 @@ public class AIInputCapture : MonoBehaviour
                 form
             );
 
-        yield return www.SendWebRequest();  //ÆÄÀÌ½ã ¼­¹ö·Î Àü¼Û
+        yield return www.SendWebRequest();  //ï¿½ï¿½ï¿½Ì½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-        if (www.result == UnityWebRequest.Result.Success)   //±×¸®°í °á°ú¸¦ ¹Þ¾Æ Ã³¸®
+        if (www.result == UnityWebRequest.Result.Success)   //ï¿½×¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Þ¾ï¿½ Ã³ï¿½ï¿½
         {
             string json = www.downloadHandler.text;     
-            Debug.Log(json);    //json °á°ú Ãâ·Â
+            Debug.Log(json);    //json ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 
             DetectionResponse response = JsonUtility.FromJson<DetectionResponse>(json);
             if (response != null)

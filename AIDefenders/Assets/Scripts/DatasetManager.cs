@@ -5,21 +5,21 @@ using System.Collections;
 public class DatasetManager : MonoBehaviour
 {
     [Header("Capture Settings")]
-    public Camera datasetCamera;            //ÃÔ¿µÇÒ Ä«¸Þ¶ó
-    public RenderTexture renderTexture;     //Ãâ·Â ¿µ»ó ÀúÀå ÅØ½ºÃÄ
+    public Camera datasetCamera;            //ï¿½Ô¿ï¿½ï¿½ï¿½ Ä«ï¿½Þ¶ï¿½
+    public RenderTexture renderTexture;     //ï¿½ï¿½ï¿½? ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ø½ï¿½ï¿½ï¿½
 
     [Header("Objects")]
-    public Transform target;                //ÃÔ¿µ ´ë»ó
-    public Animator targetAnimator;         //ÃÔ¿µ ´ë»ó ¾Ö´Ï¸ÞÀÌÅÍ
-    public string[] animationStates;        //´ë»óÀÇ ¾Ö´Ï¸ÞÀÌ¼Ç ¸®½ºÆ®
-    public Light directionalLight;          //ÅÂ¾ç±¤
+    public Transform target;                //ï¿½Ô¿ï¿½ ï¿½ï¿½ï¿½?
+    public Animator targetAnimator;         //ï¿½Ô¿ï¿½ ï¿½ï¿½ï¿½? ï¿½Ö´Ï¸ï¿½ï¿½ï¿½ï¿½ï¿½
+    public string[] animationStates;        //ï¿½ï¿½ï¿½ï¿½ï¿½? ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®
+    public Light directionalLight;          //ï¿½Â¾ç±¤
 
 
     [Header("Dataset")]
     public int sampleCount = 100;
 
     public int classID = 0;             //YOLO 
-    public string label = "enemy";      //ÇØ´ç ID¿¡ Áö¾îÁÙ ÀÌ¸§
+    public string label = "enemy";      //ï¿½Ø´ï¿½ IDï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¸ï¿½
 
     Texture2D screenTexture;
 
@@ -40,10 +40,10 @@ public class DatasetManager : MonoBehaviour
             false
         );
 
-        GenerateDataset();
+        StartCoroutine(GenerateDataset());
     }
 
-    //µ¥ÀÌÅÍ¼Â »ý¼º
+    //ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ ï¿½ï¿½ï¿½ï¿½
     IEnumerator GenerateDataset()
     {
         CreateDirectories();
@@ -55,6 +55,7 @@ public class DatasetManager : MonoBehaviour
             RandomizeAnimation();
 
             yield return null;
+            yield return new WaitForEndOfFrame();
 
             CaptureAndSave(i);
         }
@@ -63,7 +64,7 @@ public class DatasetManager : MonoBehaviour
     }
 
 
-    // /dataset/(images, labels)/(ÇÐ½À, °ËÁõ, Å×½ºÆ®) º°·Î ³ª´« Æú´õ »ý¼º
+    // /dataset/(images, labels)/(ï¿½Ð½ï¿½, ï¿½ï¿½ï¿½ï¿½, ï¿½×½ï¿½Æ®) ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     void CreateDirectories()
     {
         string[] splits = { "train", "val", "test" };
@@ -89,7 +90,7 @@ public class DatasetManager : MonoBehaviour
     }
 
     /*
-    //·¹ÀÌºíº°·Î ³ª´« Æú´õ »ý¼º
+    //ï¿½ï¿½ï¿½Ìºï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     void CreateDirectories()
     {
         string folderPath =
@@ -105,17 +106,17 @@ public class DatasetManager : MonoBehaviour
     */
 
 
-    //ÁÖº¯È¯°æ ¹«ÀÛÀ§È­
+    //ï¿½Öºï¿½È¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È­
     void RandomizeScene()
     {
-        //´ë»ó
+        //ï¿½ï¿½ï¿½?
         target.position = new Vector3(
             Random.Range(-5f, 5f),
             1f,
             Random.Range(-5f, 5f)
         );
 
-        //Ä«¸Þ¶ó
+        //Ä«ï¿½Þ¶ï¿½
         datasetCamera.transform.position = new Vector3(
             Random.Range(-8f, 8f),
             Random.Range(4f, 10f),
@@ -124,7 +125,7 @@ public class DatasetManager : MonoBehaviour
 
         datasetCamera.transform.LookAt(target);
 
-        //ÀÚ¿¬±¤
+        //ï¿½Ú¿ï¿½ï¿½ï¿½
         float sunPitch = Random.Range(15f, 80f);
         float sunYaw = Random.Range(0f, 360f);
 
@@ -136,7 +137,7 @@ public class DatasetManager : MonoBehaviour
             Random.Range(0.8f, 1f)
         );
 
-        //¾È°³
+        //ï¿½È°ï¿½
         RenderSettings.fog =
         Random.value > 0.5f;
 
@@ -150,7 +151,7 @@ public class DatasetManager : MonoBehaviour
             Random.Range(0.002f, 0.02f);
     }
 
-    //Ä¸ÃÄ ¹× ÀúÀå
+    //Ä¸ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     void CaptureAndSave(int index)
     {
         string split = GetDatasetSplit();
@@ -173,7 +174,7 @@ public class DatasetManager : MonoBehaviour
 
         byte[] bytes = screenTexture.EncodeToJPG(90);
 
-        //¿¹: ·¹ÀÌºíÀÌ tankÀÌ¸é /Dataset/images/train/tank_0.jpg
+        //ï¿½ï¿½: ï¿½ï¿½ï¿½Ìºï¿½ï¿½ï¿½ tankï¿½Ì¸ï¿½ /Dataset/images/train/tank_0.jpg
         string imageName = label + "_" + index;
         string imagePath =      
         Application.dataPath +
@@ -188,7 +189,7 @@ public class DatasetManager : MonoBehaviour
         SaveLabel(imageName, split);
     }
 
-    //µ¥ÀÌÅÍ ³ª´©±â
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     string GetDatasetSplit()
     {
         float rand = Random.value;
@@ -202,7 +203,7 @@ public class DatasetManager : MonoBehaviour
         return "test";
     }
 
-    //·¹ÀÌºí µ¥ÀÌÅÍ »ý¼º
+    //ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     void SaveLabel(string imageName, string split)
     {
         string yoloLabel = GenerateYOLOBBox();
@@ -221,7 +222,7 @@ public class DatasetManager : MonoBehaviour
         File.WriteAllText(labelPath, yoloLabel);
     }
 
-    //·¹ÀÌºí µ¥ÀÌÅÍ »ý¼º ½Ã ÇÊ¿äÇÑ BBox °è»ê
+    //ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ê¿ï¿½ï¿½ï¿½ BBox ï¿½ï¿½ï¿½?
     string GenerateYOLOBBox()
     {
         Target_Base targetbase = target.GetComponent<Target_Base>();
@@ -229,7 +230,7 @@ public class DatasetManager : MonoBehaviour
 
         Bounds bounds = renderer.bounds;
 
-        //´ë»óÀÇ ·»´õ »óÀÚÀÇ 8°³ÀÇ ²ÀÁþÁ¡. 
+        //ï¿½ï¿½ï¿½ï¿½ï¿½? ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 8ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½. 
         Vector3[] corners = new Vector3[8];
         corners[0] = new Vector3(bounds.min.x, bounds.min.y, bounds.min.z);
         corners[1] = new Vector3(bounds.max.x, bounds.min.y, bounds.min.z);
@@ -263,7 +264,7 @@ public class DatasetManager : MonoBehaviour
 
         float xCenter = ((min.x + max.x) / 2f) / width;
         float yCenter = ((min.y + max.y) / 2f) / height;
-        yCenter = 1f - yCenter;         //YOLO¿¡ ¸Â°Ô µÚÁý±â ÇÊ¿ä
+        yCenter = 1f - yCenter;         //YOLOï¿½ï¿½ ï¿½Â°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½
 
         float boxWidth = (max.x - min.x) / width;
         float boxHeight = (max.y - min.y) / height;
@@ -276,7 +277,7 @@ public class DatasetManager : MonoBehaviour
         boxHeight;
     }
 
-    //¾Ö´Ï¸ÞÀÌ¼Ç ¹«ÀÛÀ§È­
+    //ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È­
     private void RandomizeAnimation()
     {
         if (targetAnimator == null)
