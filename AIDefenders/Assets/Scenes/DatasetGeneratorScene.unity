@@ -251,6 +251,17 @@ Rigidbody:
   m_CorrespondingSourceObject: {fileID: 5858213317358515193, guid: 2904c05ad4f9fdc4b9caaec22afac09f, type: 3}
   m_PrefabInstance: {fileID: 824875317135273611}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &616191008 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1425817290378921493, guid: 2904c05ad4f9fdc4b9caaec22afac09f, type: 3}
+  m_PrefabInstance: {fileID: 824875317135273611}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20e26f648a0528b45bab6b8a61921c81, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Target_Dear
 --- !u!1 &961739749
 GameObject:
   m_ObjectHideFlags: 0
@@ -388,16 +399,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!95 &994588488 stripped
-Animator:
-  m_CorrespondingSourceObject: {fileID: 8881504610387854120, guid: a4dcd63b4e38bab469cdb928b2e4482d, type: 3}
-  m_PrefabInstance: {fileID: 2079207819}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &994588489 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 8881504610387854135, guid: a4dcd63b4e38bab469cdb928b2e4482d, type: 3}
-  m_PrefabInstance: {fileID: 2079207819}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1194965412
 GameObject:
   m_ObjectHideFlags: 0
@@ -429,14 +430,34 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   datasetCamera: {fileID: 1485303041}
   renderTexture: {fileID: 8400000, guid: 0049efad0f4709a43a3856893e14a15f, type: 2}
-  target: {fileID: 994588489}
-  targetAnimator: {fileID: 994588488}
-  animationStates:
-  - Move
+  jpegQuality: 70
+  animalPool:
+  - animal: {fileID: 1345682293}
+    classID: 0
+    label: Enemy
+    animationStates:
+    - Move
+  - animal: {fileID: 616191008}
+    classID: 1
+    label: Friendly_Deer
+    animationStates:
+    - Move
+  - animal: {fileID: 2079207820}
+    classID: 2
+    label: Friendly_Chicken
+    animationStates:
+    - Move
+  captureTargets: []
+  minCaptureCount: 1
+  maxCaptureCount: 7
+  minSpacing: 2
+  targetY: 0.006
+  targetXZRange: {x: -5, y: 5}
+  cameraXZRange: {x: -8, y: 8}
+  cameraHeightRange: {x: 4, y: 10}
   directionalLight: {fileID: 203844588}
   sampleCount: 1000
-  classID: 2
-  label: Friendly_Chicken
+  writeDatasetYaml: 1
 --- !u!4 &1194965414
 Transform:
   m_ObjectHideFlags: 0
@@ -452,6 +473,17 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1345682293 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6461337497543836042, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+  m_PrefabInstance: {fileID: 1957140671}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8a97d508256a2243aa863bbd2ef1bc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Target_Bear
 --- !u!1 &1485303038
 GameObject:
   m_ObjectHideFlags: 0
@@ -707,7 +739,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 832886938333782693, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
       propertyPath: m_LocalPosition.x
@@ -823,6 +855,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a4dcd63b4e38bab469cdb928b2e4482d, type: 3}
+--- !u!114 &2079207820 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5296950804932462725, guid: a4dcd63b4e38bab469cdb928b2e4482d, type: 3}
+  m_PrefabInstance: {fileID: 2079207819}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ce75b8c59dad614e8b6ef874ec86cb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Target_Chicken
 --- !u!1001 &824875317135273611
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -849,7 +892,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7402009758359158996, guid: 2904c05ad4f9fdc4b9caaec22afac09f, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7922649801668778606, guid: 2904c05ad4f9fdc4b9caaec22afac09f, type: 3}
       propertyPath: m_LocalPosition.x
