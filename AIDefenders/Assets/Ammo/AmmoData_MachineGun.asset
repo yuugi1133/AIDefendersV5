@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7123554aa18fc10498a03ac670fc2a4c, type: 3}
+  m_Name: AmmoData_MachineGun
+  m_EditorClassIdentifier: Assembly-CSharp::AmmoData
+  fireMode: 0
+  damage: 4
+  bulletSpeed: 80
+  gravity: 0
+  lifetime: 2.5
+  bulletPrefab: {fileID: 3223724401015827084, guid: f8f58a808953ea449baefbc91f9b1958, type: 3}
+  homingTurnRate: 0
+  explosionRadius: 0
+  explosionDamage: 0
+  hitscanRange: 50
+  hitMask:
+    serializedVersion: 2
+    m_Bits: 4294967295

@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 4471136479458626595}
   - component: {fileID: 988811436568412422}
   - component: {fileID: 6989999543610536603}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Turret_Base
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -129,7 +129,7 @@ GameObject:
   - component: {fileID: 4225619676631261318}
   - component: {fileID: 7899741705515188625}
   - component: {fileID: 2168351407938354528}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Turret_barrel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -272,7 +272,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8602923585037730778}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: FirePoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -303,7 +303,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6047966300126000413}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Turret_Test
   m_TagString: Untagged
   m_Icon: {fileID: 0}

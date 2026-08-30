@@ -70,14 +70,19 @@ public class CCTVController : MonoBehaviour
     // 포탑별로 대상 사격을 위한 예측 조준 위치를 계산 후 반환 
     Vector3 CalculateInterceptPoint(TurretController turret, Transform target)
     {
-        Rigidbody rb = target.GetComponent<Rigidbody>();
+        Rigidbody rb = target.GetComponentInParent<Rigidbody>();
 
         Vector3 targetPos = target.position;
-        Vector3 targetVel = rb.linearVelocity;
+        Vector3 targetVel = rb != null ? rb.linearVelocity : Vector3.zero;
 
         Vector3 turretPos = turret.firePoint.position;
 
-        float speed = turret.weapon.ammo.bulletSpeed;
+        if (turret.weapon == null || !turret.weapon.UsesProjectileLead)
+            return targetPos;
+
+        float speed = turret.weapon.GetMuzzleSpeed();
+        if (speed <= 0.01f)
+            return targetPos;
 
         Vector3 dir = targetPos - turretPos;
 
@@ -102,6 +107,43 @@ public class CCTVController : MonoBehaviour
             return targetPos;
 
         return targetPos + targetVel * t;
+    }
+
+    bool TryFindTargetAlongRay(Ray ray, out Target_Base targetbase, out Transform target)
+    {
+        targetbase = null;
+        target = null;
+
+        int mask = detectionMask.value;
+        if (mask == 0)
+        {
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            mask = enemyLayer >= 0
+                ? (1 << enemyLayer)
+                : Physics.DefaultRaycastLayers;
+        }
+
+        RaycastHit[] hits = Physics.RaycastAll(ray, 1000f, mask);
+        if (hits == null || hits.Length == 0)
+            return false;
+
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            Target_Base found = hit.collider.GetComponentInParent<Target_Base>();
+            if (found == null || found.isDead)
+                continue;
+
+            if (found.CompareTag("Enemy") == false)
+                continue;
+
+            targetbase = found;
+            target = found.transform;
+            return true;
+        }
+
+        return false;
     }
 
     //탐지한 적 json 데이터 처리
@@ -130,47 +172,35 @@ public class CCTVController : MonoBehaviour
                     - detection.center_y
                 );
 
-            // 적의 위치로 Ray 발사! (해당 Ray는 적의 collision를 맞추려고 한다.)
-            Ray ray =cctvCamera.ScreenPointToRay(screenPos);
-
+            Ray ray = cctvCamera.ScreenPointToRay(screenPos);
             Debug.DrawRay(ray.origin, ray.direction * 1000f, Color.red, 1f);
 
-            // 발사한 Ray가 적을 맞추고 난 후 처리 (맞은 콜라이더 위치를 포탑에게 전달하여 공격하도록 지시)
-            if (Physics.Raycast(ray, out RaycastHit hit, 1000f))
-            {
-                Transform target = hit.collider.transform;
-                Target_Base targetbase = hit.collider.GetComponentInParent<Target_Base>();
+            if (!TryFindTargetAlongRay(ray, out Target_Base targetbase, out Transform target))
+                continue;
 
-                if (targetbase.isDead)
+            if (turrets == null)
+                continue;
+
+            foreach (TurretController turret in turrets)
+            {
+                if (turret == null || turret.firePoint == null)
                     continue;
 
-                // 모든 포탑에 전달
-                foreach (TurretController turret in turrets)
-                {
-                    float distance =
-                        Vector3.Distance(turret.transform.position, target.position);
+                float distance =
+                    Vector3.Distance(turret.transform.position, target.position);
 
-                    if (distance >turret.range)
-                        continue;
+                if (distance > turret.range)
+                    continue;
 
-                    Vector3 aimPoint =
-                        CalculateInterceptPoint(
-                            turret,
-                            target
-                        );
+                Vector3 aimPoint = CalculateInterceptPoint(turret, target);
+                turret.SetTarget(target, aimPoint);
 
-                    turret.SetTarget(
-                        target,
-                        aimPoint
-                    );
-
-                    Debug.DrawLine(
-                        turret.transform.position,
-                        aimPoint,
-                        Color.green,
-                        1f
-                    );
-                }
+                Debug.DrawLine(
+                    turret.transform.position,
+                    aimPoint,
+                    Color.green,
+                    1f
+                );
             }
         }
     }

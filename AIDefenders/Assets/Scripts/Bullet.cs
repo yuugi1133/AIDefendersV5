@@ -2,42 +2,111 @@ using UnityEngine;
 
 public class Bullet : MonoBehaviour
 {
-    Vector3 velocity;   //현재 탄속
-    float gravity;      //중력가속도
-    float damage;       //피해량
+    AmmoData ammo;
+    Vector3 velocity;
+    float gravity;
+    float damage;
+    float lifetime = 5f;
+    Transform homingTarget;
+    float homingTurnRate;
+    float age;
+    bool exploded;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        //터렛과 총알은 충돌을 무시한다.
         Physics.IgnoreLayerCollision(
             LayerMask.NameToLayer("Bullet"),
             LayerMask.NameToLayer("Turret")
         );
     }
 
-    public void Init(Vector3 initialVelocity, float gravityValue, float initialdamage)
+    public void Init(
+        Vector3 initialVelocity,
+        float gravityValue,
+        float initialDamage,
+        float life = 5f,
+        Transform target = null,
+        float turnRate = 0f,
+        AmmoData ammoData = null)
     {
         velocity = initialVelocity;
         gravity = gravityValue;
-        damage = initialdamage;
-    }
+        damage = initialDamage;
+        lifetime = life > 0f ? life : 5f;
+        homingTarget = target;
+        homingTurnRate = turnRate;
+        ammo = ammoData;
+        age = 0f;
+        exploded = false;
 
-    void OnCollisionEnter(Collision col)
-    {
-        Target_Base target = col.collider.GetComponentInParent<Target_Base>();
-
-        if (target != null)
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
         {
-            target.TakeDamage(damage);
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
         }
+
+        foreach (Collider col in GetComponents<Collider>())
+            col.isTrigger = true;
     }
 
-    // Update is called once per frame
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.GetComponentInParent<Bullet>() != null)
+            return;
+
+        Target_Base direct = other.GetComponentInParent<Target_Base>();
+        Vector3 point = other.ClosestPoint(transform.position);
+        Explode(point, direct);
+    }
+
+    void Explode(Vector3 point, Target_Base directHit)
+    {
+        if (exploded)
+            return;
+
+        exploded = true;
+
+        if (directHit != null && !directHit.isDead)
+            directHit.TakeDamage(damage);
+
+        if (ammo != null)
+            ammo.ApplyExplosion(point, directHit);
+
+        Destroy(gameObject);
+    }
+
     void Update()
     {
-        velocity += Vector3.down * gravity * Time.deltaTime;
+        age += Time.deltaTime;
+        if (age >= lifetime)
+        {
+            Explode(transform.position, null);
+            return;
+        }
 
+        if (homingTarget != null && homingTurnRate > 0f)
+        {
+            Vector3 toTarget = (homingTarget.position - transform.position).normalized;
+            float speed = velocity.magnitude;
+            if (speed > 0.01f)
+            {
+                Vector3 newDir = Vector3.RotateTowards(
+                    velocity.normalized,
+                    toTarget,
+                    homingTurnRate * Mathf.Deg2Rad * Time.deltaTime,
+                    0f
+                );
+                velocity = newDir * speed;
+            }
+        }
+
+        velocity += Vector3.down * gravity * Time.deltaTime;
         transform.position += velocity * Time.deltaTime;
+
+        if (velocity.sqrMagnitude > 0.0001f)
+            transform.rotation = Quaternion.LookRotation(velocity);
     }
 }

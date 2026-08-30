@@ -7,7 +7,16 @@ EditorBuildSettings:
   m_Scenes:
   - enabled: 1
     path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/Scenes/TurretLab.unity
+    guid: ae44bc138a8b060439a3b5af02588104
+  - enabled: 1
+    path: Assets/Scenes/DatasetGeneratorScene.unity
+    guid: 6a85e0cf895fffc448d185c50411b1b2
+  - enabled: 1
+    path: Assets/AIDefenders.unity
+    guid: a31ee167c68162b47afde666e6104b82
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

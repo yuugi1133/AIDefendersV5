@@ -5,11 +5,11 @@ using UnityEngine;
 public class Target_Base : MonoBehaviour
 {
     [Header("Stats")]
-    public float maxHP = 100f;  //최대 체력
-    public float currentHP;     //현재 체력
-    public float moveSpeed = 3f; //이속
+    public float maxHP = 100f;  //??? ???
+    public float currentHP;     //???? ???
+    public float moveSpeed = 3f; //???
 
-    public bool isSample = false; //움직이지 않는 샘플이면 자동 애니메이션, 이동 무시
+    public bool isSample = false; //???????? ??? ??????? ??? ???????, ??? ????
 
     [Header("Death")]
     public bool isDead = false;
@@ -30,7 +30,8 @@ public class Target_Base : MonoBehaviour
         rigidbody = GetComponent<Rigidbody>();
         rigidbody.useGravity = false;
         rigidbody.constraints =
-            RigidbodyConstraints.FreezeRotation;
+            RigidbodyConstraints.FreezeRotation |
+            RigidbodyConstraints.FreezePositionY;
 
 
     }
@@ -46,24 +47,24 @@ public class Target_Base : MonoBehaviour
         Move();
     }
 
-    //렌더링 모델 출력(bbox 생성에 필요)
+    //?????? ?? ???(bbox ?????? ???)
     public Renderer getRenderer()
     {
         return renderer;
     }
 
-    //이동 기능
+    //??? ???
     void Move()
     {
         Vector3 forward = transform.forward * moveSpeed;
-        rigidbody.linearVelocity = new Vector3(forward.x, rigidbody.linearVelocity.y, forward.z);
+        rigidbody.linearVelocity = new Vector3(forward.x, 0f, forward.z);
 
-        //애니메이터 요구
+        //???????? ??
         if (animator)
             animator.SetBool("Move", true);
     }
 
-    //피격 처리
+    //??? ???
     public virtual void TakeDamage(float damage)
     {
         if (isDead)
@@ -75,7 +76,7 @@ public class Target_Base : MonoBehaviour
             Die();
     }
 
-    //사망 시 처리
+    //??? ?? ???
     protected virtual void Die()
     {
         isDead = true;
