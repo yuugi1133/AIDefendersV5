@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7c3e91f2b4d4e6a8c1f0d5e9b2a8471, type: 3}
+  m_Name: StageData_Test
+  m_EditorClassIdentifier: Assembly-CSharp::StageData
+  firstPrepTime: 8
+  waves:
+  - waveName: Wave 1
+    duration: 35
+    nextWavePrepTime: 8
+    groups:
+    - spawnTime: 0
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 12
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 2
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 2
+  - waveName: Wave 2
+    duration: 40
+    nextWavePrepTime: 10
+    groups:
+    - spawnTime: 0
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 18
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 4

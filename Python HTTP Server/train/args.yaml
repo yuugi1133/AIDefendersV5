@@ -13,7 +13,7 @@ cache: false
 device: ''
 workers: 4
 project: null
-name: train-2
+name: train-4
 exist_ok: false
 pretrained: true
 cls_remap: true
@@ -113,4 +113,4 @@ auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: tracktrack.yaml
-save_dir: E:\Unity Projects\AIDefendersV5\runs\detect\train-2
+save_dir: E:\Unity Projects\AIDefendersV5\runs\detect\train-4

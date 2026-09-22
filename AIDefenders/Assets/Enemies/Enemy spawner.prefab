@@ -125,6 +125,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27e68e70dae965d46adb419c6b6c36c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  enemyPrefab: {fileID: 1667448456926432435, guid: 154a21924d02d8248b7c1a1471cc3ae0, type: 3}
   spawnRange: 20
-  spawnInterval: 2
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 1
+  raycastHeight: 80
+  spawnHeightOffset: 0.05
+  maxPlaceAttempts: 8

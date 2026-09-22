@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AmmoData_MachineGun
   m_EditorClassIdentifier: Assembly-CSharp::AmmoData
   fireMode: 0
-  damage: 4
+  damage: 55
   bulletSpeed: 80
   gravity: 0
   lifetime: 2.5

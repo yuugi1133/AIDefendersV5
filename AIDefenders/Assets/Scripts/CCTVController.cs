@@ -1,4 +1,7 @@
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 public class CCTVController : MonoBehaviour
 {
@@ -11,37 +14,112 @@ public class CCTVController : MonoBehaviour
     public TurretController[] turrets;
     GameObject[] enemies;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    [Header("Rotation Range")]
+    public float yawMin = -60f;
+    public float yawMax = 60f;
+    public float pitchMin = -25f;
+    public float pitchMax = 30f;
+
+    [Header("Manual Aim")]
+    public float yawSpeed = 25f;
+    public float pitchSpeed = 20f;
+
+    WaveDirector waveDirector;
+    Quaternion restRotation;
+    float yawOffset;
+    float pitchOffset;
+
     void Start()
     {
-        aiInput.OnDetectionReceived += HandleDetections;
+        restRotation = transform.localRotation;
+        waveDirector = FindFirstObjectByType<WaveDirector>();
+
+        if (aiInput != null)
+            aiInput.OnDetectionReceived += HandleDetections;
     }
 
     void OnDestroy()
     {
-        aiInput.OnDetectionReceived -= HandleDetections;
+        if (aiInput != null)
+            aiInput.OnDetectionReceived -= HandleDetections;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        /*-------------월드 기반 자동 조준(더이상 사용하지 않음.)------------
-        enemies = GameObject.FindGameObjectsWithTag("Enemy");
-        
-        foreach (TurretController turret in turrets)
+        UpdateManualAim();
+    }
+
+    void UpdateManualAim()
+    {
+        if (waveDirector == null)
+            waveDirector = FindFirstObjectByType<WaveDirector>();
+
+        if (waveDirector == null || waveDirector.Phase != WavePhase.Combat)
+            return;
+
+        float yawInput = ReadYawInput();
+        float pitchInput = ReadPitchInput();
+
+        yawOffset = Mathf.Clamp(
+            yawOffset + yawInput * yawSpeed * Time.deltaTime,
+            yawMin,
+            yawMax
+        );
+
+        pitchOffset = Mathf.Clamp(
+            pitchOffset - pitchInput * pitchSpeed * Time.deltaTime,
+            pitchMin,
+            pitchMax
+        );
+
+        transform.localRotation =
+            restRotation * Quaternion.Euler(pitchOffset, yawOffset, 0f);
+    }
+
+    float ReadYawInput()
+    {
+        float value = 0f;
+
+#if ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null)
         {
-            Transform target = FindClosestEnemyInRange(turret, enemies);
-
-            if (target == null)
-                continue;
-
-            Vector3 aimPoint = CalculateInterceptPoint(turret, target);
-
-            turret.SetTarget(target, aimPoint);
-
-            Debug.DrawLine(turret.firePoint.position, aimPoint, Color.red);
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
+                value -= 1f;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
+                value += 1f;
+            return value;
         }
-        */
+#endif
+
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+            value -= 1f;
+        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+            value += 1f;
+        return value;
+    }
+
+    float ReadPitchInput()
+    {
+        float value = 0f;
+
+#if ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null)
+        {
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
+                value += 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
+                value -= 1f;
+            return value;
+        }
+#endif
+
+        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
+            value += 1f;
+        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
+            value -= 1f;
+        return value;
     }
 
     //포탑별로 해당 포탑과 가장 가까운 대상 찾기

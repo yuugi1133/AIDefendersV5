@@ -5,5 +5,5 @@ test: images/test
 
 nc: 2
 names:
-  0: Enemy
-  1: Friendly_Deer
+  0: Enemy_Wolf
+  1: Friendly_Sheep

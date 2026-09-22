@@ -13,14 +13,14 @@ MonoBehaviour:
   m_Name: AmmoData_Missile
   m_EditorClassIdentifier: Assembly-CSharp::AmmoData
   fireMode: 1
-  damage: 35
+  damage: 120
   bulletSpeed: 16
   gravity: 0
   lifetime: 6
   bulletPrefab: {fileID: 3223724401015827084, guid: f8f58a808953ea449baefbc91f9b1958, type: 3}
   homingTurnRate: 220
-  explosionRadius: 4.5
-  explosionDamage: 28
+  explosionRadius: 8
+  explosionDamage: 60
   hitscanRange: 50
   hitMask:
     serializedVersion: 2

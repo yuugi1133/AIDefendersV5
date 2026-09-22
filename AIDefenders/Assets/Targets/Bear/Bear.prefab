@@ -30,8 +30,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.007792039, y: 0.00000020538101, z: 0.1146656}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 8592823090782237243}
   - {fileID: 89359395526666613}
@@ -124,11 +124,13 @@ MonoBehaviour:
   maxHP: 100
   currentHP: 0
   moveSpeed: 5
+  isSample: 0
+  isDead: 0
   sinkSpeed: 1
   destroyDelay: 3
   animator: {fileID: 6732651187374356703}
   renderer: {fileID: 6576720895163708352}
-  isDead: 0
+  rigidbody: {fileID: 0}
 --- !u!1 &123067631597614405
 GameObject:
   m_ObjectHideFlags: 0

@@ -2,35 +2,89 @@ using UnityEngine;
 
 public class EnemySpawner : MonoBehaviour
 {
-    public GameObject[] spawnList;
-
+    [Header("Placement")]
     public float spawnRange = 20;
-    public float spawnInterval = 2;
+    public LayerMask groundMask;
+    public float raycastHeight = 80f;
+    public float spawnHeightOffset = 0.05f;
+    public int maxPlaceAttempts = 8;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    public void SpawnGroup(SpawnGroup group)
     {
-        InvokeRepeating("SpawnTarget", 1, spawnInterval);
-    }
-
-    void SpawnTarget()
-    {
-        if (spawnList.Length <= 0)
+        if (group == null || group.targets == null)
             return;
 
-        Vector3 pos = new Vector3(
-            Random.Range(-spawnRange, spawnRange),
-            0,    //Ä¸½¶ Å×½ºÅÍÀÏ °æ¿ì 1À» ¾µ °Í
-            Random.Range(-spawnRange, spawnRange)
-        );
-
-        Instantiate(spawnList[Random.Range(0, spawnList.Length)], pos, Quaternion.identity);
-        
+        foreach (SpawnTargetEntry entry in group.targets)
+            Spawn(entry);
     }
 
-    // Update is called once per frame
-    void Update()
+    public void Spawn(SpawnTargetEntry entry)
     {
-        
+        if (entry == null || entry.prefab == null || entry.count <= 0)
+            return;
+
+        for (int i = 0; i < entry.count; i++)
+            SpawnOne(entry.prefab);
+    }
+
+    public void SpawnOne(GameObject prefab)
+    {
+        if (prefab == null)
+            return;
+
+        if (!TryGetGroundSpawnPoint(out Vector3 pos))
+        {
+            Debug.LogWarning("EnemySpawner: ì§€í˜• ìŠ¤í° ìœ„ì¹˜ë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.");
+            return;
+        }
+
+        Instantiate(prefab, pos, Quaternion.identity);
+    }
+
+    bool TryGetGroundSpawnPoint(out Vector3 spawnPos)
+    {
+        spawnPos = transform.position;
+
+        int mask = GetGroundMask();
+
+        for (int i = 0; i < maxPlaceAttempts; i++)
+        {
+            float x = transform.position.x + Random.Range(-spawnRange, spawnRange);
+            float z = transform.position.z + Random.Range(-spawnRange, spawnRange);
+            Vector3 origin = new Vector3(x, transform.position.y + raycastHeight, z);
+
+            if (Physics.Raycast(
+                    origin,
+                    Vector3.down,
+                    out RaycastHit hit,
+                    raycastHeight * 2f,
+                    mask,
+                    QueryTriggerInteraction.Ignore))
+            {
+                spawnPos = hit.point + Vector3.up * spawnHeightOffset;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    int GetGroundMask()
+    {
+        if (groundMask.value != 0)
+            return groundMask.value;
+
+        int mask = Physics.DefaultRaycastLayers;
+        mask &= ~LayerMask.GetMask("Enemy", "Friendly", "Turret", "Bullet", "Ignore Raycast");
+        return mask;
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(1f, 0.4f, 0.1f, 0.25f);
+        Gizmos.DrawWireCube(
+            transform.position,
+            new Vector3(spawnRange * 2f, 0.2f, spawnRange * 2f)
+        );
     }
 }
