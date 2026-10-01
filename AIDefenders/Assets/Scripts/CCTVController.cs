@@ -38,6 +38,24 @@ public class CCTVController : MonoBehaviour
             aiInput.OnDetectionReceived += HandleDetections;
     }
 
+    public void RegisterTurret(TurretController turret)
+    {
+        if (turret == null)
+            return;
+
+        if (turrets == null)
+            turrets = System.Array.Empty<TurretController>();
+
+        for (int i = 0; i < turrets.Length; i++)
+        {
+            if (turrets[i] == turret)
+                return;
+        }
+
+        System.Array.Resize(ref turrets, turrets.Length + 1);
+        turrets[turrets.Length - 1] = turret;
+    }
+
     void OnDestroy()
     {
         if (aiInput != null)

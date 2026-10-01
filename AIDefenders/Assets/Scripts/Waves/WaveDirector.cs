@@ -13,6 +13,7 @@ public class WaveDirector : MonoBehaviour
 {
     public StageData stage;
     public EnemySpawner spawner;
+    public EnemySpawner[] spawners;
 
     [Header("Player Cameras")]
     public Camera preparationCamera;
@@ -41,11 +42,7 @@ public class WaveDirector : MonoBehaviour
 
     void Start()
     {
-        if (spawner == null)
-            spawner = GetComponent<EnemySpawner>();
-
-        if (spawner == null)
-            spawner = FindFirstObjectByType<EnemySpawner>();
+        ResolveSpawners();
 
         if (autoStart)
             BeginStage();
@@ -122,7 +119,7 @@ public class WaveDirector : MonoBehaviour
 
     void SpawnDueGroups()
     {
-        if (currentWave == null || currentWave.groups == null || spawner == null)
+        if (currentWave == null || currentWave.groups == null)
             return;
 
         float elapsed = currentWave.duration - PhaseTimeRemaining;
@@ -137,8 +134,88 @@ public class WaveDirector : MonoBehaviour
                 continue;
 
             groupSpawned[i] = true;
-            spawner.SpawnGroup(group);
+
+            EnemySpawner chosen = ResolveSpawner(group);
+            if (chosen == null)
+            {
+                Debug.LogWarning(
+                    "WaveDirector: 스포너를 찾지 못했습니다. " +
+                    (string.IsNullOrWhiteSpace(group.spawnerId) ? "(기본)" : group.spawnerId)
+                );
+                continue;
+            }
+
+            chosen.SpawnGroup(group);
         }
+    }
+
+    void ResolveSpawners()
+    {
+        if (spawners == null || spawners.Length == 0)
+        {
+            spawners = FindObjectsByType<EnemySpawner>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+        }
+
+        if (spawner == null)
+            spawner = GetComponent<EnemySpawner>();
+
+        if (spawner == null && spawners != null && spawners.Length > 0)
+            spawner = spawners[0];
+    }
+
+    EnemySpawner ResolveSpawner(SpawnGroup group)
+    {
+        if (group != null && !string.IsNullOrWhiteSpace(group.spawnerId))
+        {
+            EnemySpawner found = FindSpawner(group.spawnerId);
+            if (found != null)
+                return found;
+        }
+
+        return spawner;
+    }
+
+    EnemySpawner FindSpawner(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return null;
+
+        string key = id.Trim();
+
+        if (spawners != null)
+        {
+            for (int i = 0; i < spawners.Length; i++)
+            {
+                EnemySpawner candidate = spawners[i];
+                if (candidate != null && MatchesSpawner(candidate, key))
+                    return candidate;
+            }
+        }
+
+        if (spawner != null && MatchesSpawner(spawner, key))
+            return spawner;
+
+        EnemySpawner[] found = FindObjectsByType<EnemySpawner>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None
+        );
+
+        for (int i = 0; i < found.Length; i++)
+        {
+            if (found[i] != null && MatchesSpawner(found[i], key))
+                return found[i];
+        }
+
+        return null;
+    }
+
+    static bool MatchesSpawner(EnemySpawner candidate, string key)
+    {
+        return string.Equals(candidate.Id, key, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(candidate.gameObject.name, key, System.StringComparison.OrdinalIgnoreCase);
     }
 
     void EndCurrentWave()

@@ -55,9 +55,9 @@ QualitySettings:
     terrainBasemapDistance: 1000
     terrainDetailDistance: 80
     terrainTreeDistance: 5000
-    terrainBillboardStart: 50
+    terrainBillboardStart: 2500
     terrainFadeLength: 5
-    terrainMaxTrees: 50
+    terrainMaxTrees: 400
     excludedTargetPlatforms:
     - Standalone
   - serializedVersion: 4
@@ -109,9 +109,9 @@ QualitySettings:
     terrainBasemapDistance: 1000
     terrainDetailDistance: 80
     terrainTreeDistance: 5000
-    terrainBillboardStart: 50
+    terrainBillboardStart: 2500
     terrainFadeLength: 5
-    terrainMaxTrees: 50
+    terrainMaxTrees: 400
     excludedTargetPlatforms:
     - Android
     - iPhone

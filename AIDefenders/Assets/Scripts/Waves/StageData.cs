@@ -11,6 +11,10 @@ public class SpawnTargetEntry
 public class SpawnGroup
 {
     public float spawnTime;
+
+    [Tooltip("비우면 WaveDirector 기본 스포너. EnemySpawner의 Spawner Id 또는 오브젝트 이름과 같게 넣습니다.")]
+    public string spawnerId;
+
     public SpawnTargetEntry[] targets;
 }
 

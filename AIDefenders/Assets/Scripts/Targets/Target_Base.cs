@@ -11,11 +11,21 @@ public class Target_Base : MonoBehaviour
 
     public bool isSample = false;
 
+    [Header("Path")]
+    public Transform destination;
+    public float waypointRadius = 1.2f;
+    public float arriveDistance = 1.5f;
+    public float turnSpeed = 8f;
+
     [Header("Ground")]
     public LayerMask groundMask;
     public float groundRayHeight = 5f;
     public float groundHeightOffset = 0.05f;
     public float maxGroundDistance = 20f;
+
+    Vector3[] route;
+    int routeIndex;
+    bool reachedDestination;
 
     [Header("Death")]
     public bool isDead = false;
@@ -58,12 +68,51 @@ public class Target_Base : MonoBehaviour
         return renderer;
     }
 
+    public void SetMoveRoute(Vector3[] corners, Transform goal)
+    {
+        destination = goal;
+        route = corners;
+        routeIndex = 0;
+        reachedDestination = false;
+
+        while (route != null &&
+               routeIndex < route.Length &&
+               HorizontalDistance(route[routeIndex]) <= waypointRadius)
+        {
+            routeIndex++;
+        }
+    }
+
     void Move()
     {
-        Vector3 forward = new Vector3(transform.forward.x, 0f, transform.forward.z);
+        AdvanceRoute();
+
+        if (reachedDestination)
+        {
+            rigidbody.linearVelocity = Vector3.zero;
+            if (animator)
+                animator.SetBool("Move", false);
+            return;
+        }
+
+        Vector3 steerPoint = GetSteerPoint();
+        Vector3 forward = Flatten(steerPoint - rigidbody.position);
+        if (forward.sqrMagnitude < 0.0001f)
+            forward = Flatten(transform.forward);
         if (forward.sqrMagnitude < 0.0001f)
             forward = Vector3.forward;
         forward.Normalize();
+
+        Vector3 look = Flatten(transform.forward);
+        if (look.sqrMagnitude > 0.0001f)
+        {
+            Quaternion targetRot = Quaternion.LookRotation(forward, Vector3.up);
+            transform.rotation = Quaternion.Slerp(
+                Quaternion.LookRotation(look.normalized, Vector3.up),
+                targetRot,
+                1f - Mathf.Exp(-turnSpeed * Time.fixedDeltaTime)
+            );
+        }
 
         Vector3 velocity = forward * moveSpeed;
 
@@ -78,6 +127,54 @@ public class Target_Base : MonoBehaviour
 
         if (animator)
             animator.SetBool("Move", true);
+    }
+
+    void AdvanceRoute()
+    {
+        if (route != null && routeIndex < route.Length)
+        {
+            if (HorizontalDistance(route[routeIndex]) <= waypointRadius)
+                routeIndex++;
+        }
+
+        if (route != null && routeIndex < route.Length)
+            return;
+
+        if (destination == null)
+            return;
+
+        if (HorizontalDistance(destination.position) <= arriveDistance)
+            reachedDestination = true;
+    }
+
+    Vector3 GetSteerPoint()
+    {
+        if (route != null && routeIndex < route.Length)
+            return route[routeIndex];
+
+        if (destination != null)
+            return destination.position;
+
+        return rigidbody.position + Flatten(transform.forward);
+    }
+
+    Vector3 BodyPosition()
+    {
+        if (rigidbody != null)
+            return rigidbody.position;
+
+        return transform.position;
+    }
+
+    float HorizontalDistance(Vector3 worldPoint)
+    {
+        return Flatten(worldPoint - BodyPosition()).magnitude;
+    }
+
+    static Vector3 Flatten(Vector3 value)
+    {
+        value.y = 0f;
+        return value;
     }
 
     void FollowGround()

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5115612602326459717}
   - component: {fileID: 5303192905100796398}
+  - component: {fileID: 5303192905100796399}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -46,7 +47,35 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WaveDirector
   stage: {fileID: 11400000, guid: e1a7c35d6f81720e2a5b4d9c3f6e2815, type: 2}
   spawner: {fileID: 0}
+  spawners: []
   preparationCamera: {fileID: 0}
   waveCamera: {fileID: 0}
   autoStart: 1
   showDebugHud: 1
+--- !u!114 &5303192905100796399
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3635317240260506672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a8b3c4d5e6f7081920a3b4c5d6e7f80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TurretPlatformPlacer
+  platformPrefab: {fileID: 3605271865678529380, guid: b8cf1a57cbec442478035c14da2212bb, type: 3}
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 0
+  placeHeightOffset: 0.5
+  overlapPadding: 0.9
+  turretOptions:
+  - displayName: Turret_Test
+    prefab: {fileID: 9211372644908279419, guid: 268533bc8e4219e40a05aa364bd53732, type: 3}
+  - displayName: Turret_Test MG
+    prefab: {fileID: 4558551398018450366, guid: d9b765170d3034842a65937d764a4e52, type: 3}
+  - displayName: Turret_Test Missile
+    prefab: {fileID: 8124240509875344070, guid: 5c6c30979534a1e49906c3c551dc0a65, type: 3}
+  - displayName: Turret_Test Laser
+    prefab: {fileID: 6692554674478039121, guid: fc00c3faf402e744ea7d51f07648d55d, type: 3}
