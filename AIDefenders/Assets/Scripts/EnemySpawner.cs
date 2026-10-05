@@ -28,7 +28,8 @@ public class EnemySpawner : MonoBehaviour
     public Transform destination;
     public EnemyPath[] paths;
     public bool pickNearestPath;
-    public float pathWidth = 2f;
+    [Tooltip("목적지 Transform 주변에서 목표를 흩뿌릴 반경. Path의 waypointRadius와 같은 역할.")]
+    public float destinationRadius = 4f;
     public float navMeshSampleDistance = 6f;
 
     public void SpawnGroup(SpawnGroup group)
@@ -72,12 +73,7 @@ public class EnemySpawner : MonoBehaviour
     {
         EnemyPath path = PickPath(spawnPos);
         if (path != null && path.PointCount > 0)
-        {
-            float offset = pathWidth > 0f
-                ? Random.Range(-pathWidth * 0.5f, pathWidth * 0.5f)
-                : 0f;
-            return AppendDestination(path.GetWorldPoints(offset));
-        }
+            return AppendDestination(path.GetScatteredWorldPoints());
 
         if (destination != null &&
             TryBuildNavMeshRoute(spawnPos, destination.position, out Vector3[] navCorners))
@@ -145,7 +141,7 @@ public class EnemySpawner : MonoBehaviour
         if (destination == null)
             return corners;
 
-        Vector3 goal = destination.position;
+        Vector3 goal = EnemyPath.ScatterPoint(destination.position, destinationRadius);
         if (corners == null || corners.Length == 0)
             return new[] { goal };
 

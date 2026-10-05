@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 5115612602326459717}
   - component: {fileID: 5303192905100796398}
   - component: {fileID: 5303192905100796399}
+  - component: {fileID: 5303192905100796401}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -50,7 +51,7 @@ MonoBehaviour:
   spawners: []
   preparationCamera: {fileID: 0}
   waveCamera: {fileID: 0}
-  autoStart: 1
+  autoStart: 0
   showDebugHud: 1
 --- !u!114 &5303192905100796399
 MonoBehaviour:
@@ -70,12 +71,36 @@ MonoBehaviour:
     m_Bits: 0
   placeHeightOffset: 0.5
   overlapPadding: 0.9
+  platformBaseCost: 40
+  platformCostIncrease: 20
   turretOptions:
   - displayName: Turret_Test
     prefab: {fileID: 9211372644908279419, guid: 268533bc8e4219e40a05aa364bd53732, type: 3}
+    cost: 50
+    sellPrice: 25
   - displayName: Turret_Test MG
     prefab: {fileID: 4558551398018450366, guid: d9b765170d3034842a65937d764a4e52, type: 3}
+    cost: 80
+    sellPrice: 40
   - displayName: Turret_Test Missile
     prefab: {fileID: 8124240509875344070, guid: 5c6c30979534a1e49906c3c551dc0a65, type: 3}
+    cost: 120
+    sellPrice: 60
   - displayName: Turret_Test Laser
     prefab: {fileID: 6692554674478039121, guid: fc00c3faf402e744ea7d51f07648d55d, type: 3}
+    cost: 150
+    sellPrice: 75
+--- !u!114 &5303192905100796401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3635317240260506672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7f2c91a4b6d4e8f9a0b1c2d3e4f5a6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  waveDirector: {fileID: 5303192905100796398}
+  serverWaitTimeout: 180

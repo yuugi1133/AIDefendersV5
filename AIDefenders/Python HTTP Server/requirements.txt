@@ -1,0 +1,9 @@
+# Python 3.11 - YOLO server / train
+# torch / torchvision are installed separately (CUDA or CPU).
+fastapi>=0.115
+uvicorn>=0.32
+python-multipart>=0.0.12
+ultralytics>=8.3
+opencv-python>=4.10
+numpy>=1.26
+pillow>=10.4

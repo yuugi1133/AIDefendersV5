@@ -5,6 +5,9 @@ public class EnemyPath : MonoBehaviour
     [Tooltip("비우면 자식 Transform 순서를 웨이포인트로 사용합니다.")]
     public Transform[] waypoints;
 
+    [Tooltip("각 웨이포인트에서 대상이 고를 무작위 목표의 반경.")]
+    public float waypointRadius = 4f;
+
     public Color gizmoColor = new Color(0.2f, 0.85f, 1f, 0.9f);
 
     public int PointCount
@@ -25,7 +28,7 @@ public class EnemyPath : MonoBehaviour
         return points[0].position;
     }
 
-    public Vector3[] GetWorldPoints(float lateralOffset = 0f)
+    public Vector3[] GetWorldPoints()
     {
         Transform[] points = GetWaypointTransforms();
         if (points == null || points.Length == 0)
@@ -34,27 +37,29 @@ public class EnemyPath : MonoBehaviour
         Vector3[] world = new Vector3[points.Length];
         for (int i = 0; i < points.Length; i++)
             world[i] = points[i].position;
-
-        if (Mathf.Abs(lateralOffset) < 0.01f)
-            return world;
-
-        for (int i = 0; i < world.Length; i++)
-        {
-            Vector3 dir;
-            if (i < world.Length - 1)
-                dir = world[i + 1] - world[i];
-            else
-                dir = world[i] - world[i - 1];
-
-            dir.y = 0f;
-            if (dir.sqrMagnitude < 0.0001f)
-                continue;
-
-            Vector3 right = Vector3.Cross(Vector3.up, dir.normalized);
-            world[i] += right * lateralOffset;
-        }
-
         return world;
+    }
+
+    public Vector3[] GetScatteredWorldPoints()
+    {
+        Vector3[] centers = GetWorldPoints();
+        if (centers.Length == 0)
+            return centers;
+
+        float radius = Mathf.Max(0f, waypointRadius);
+        Vector3[] scattered = new Vector3[centers.Length];
+        for (int i = 0; i < centers.Length; i++)
+            scattered[i] = ScatterPoint(centers[i], radius);
+        return scattered;
+    }
+
+    public static Vector3 ScatterPoint(Vector3 center, float radius)
+    {
+        if (radius <= 0.01f)
+            return center;
+
+        Vector2 offset = Random.insideUnitCircle * radius;
+        return center + new Vector3(offset.x, 0f, offset.y);
     }
 
     Transform[] GetWaypointTransforms()
@@ -106,9 +111,26 @@ public class EnemyPath : MonoBehaviour
         Gizmos.color = gizmoColor;
         for (int i = 0; i < points.Length; i++)
         {
-            Gizmos.DrawSphere(points[i], 0.35f);
+            Gizmos.DrawSphere(points[i], 0.25f);
+            DrawRadius(points[i], waypointRadius);
             if (i < points.Length - 1)
                 Gizmos.DrawLine(points[i], points[i + 1]);
+        }
+    }
+
+    void DrawRadius(Vector3 center, float radius)
+    {
+        if (radius <= 0.01f)
+            return;
+
+        const int segments = 24;
+        Vector3 prev = center + new Vector3(radius, 0f, 0f);
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = i / (float)segments * Mathf.PI * 2f;
+            Vector3 next = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+            Gizmos.DrawLine(prev, next);
+            prev = next;
         }
     }
 }

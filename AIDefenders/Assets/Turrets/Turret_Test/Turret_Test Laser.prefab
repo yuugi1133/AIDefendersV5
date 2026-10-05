@@ -294,6 +294,8 @@ MonoBehaviour:
   rotationSpeed: 5
   fireAngleThreshold: 20
   range: 30
+  commandTimeout: 1.5
+  sellPrice: 75
 --- !u!1 &6692554674478039121
 GameObject:
   m_ObjectHideFlags: 0

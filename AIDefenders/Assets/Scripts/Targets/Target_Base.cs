@@ -11,11 +11,16 @@ public class Target_Base : MonoBehaviour
 
     public bool isSample = false;
 
+    [Header("Reward")]
+    public int killReward = 10;
+
     [Header("Path")]
     public Transform destination;
-    public float waypointRadius = 1.2f;
-    public float arriveDistance = 1.5f;
+    public float waypointRadius = 1.8f;
+    public float arriveDistance = 2.2f;
     public float turnSpeed = 8f;
+    [Tooltip("이 시간 동안 현재 웨이포인트에 못 닿으면 다음으로 넘어갑니다.")]
+    public float waypointSkipTime = 2.5f;
 
     [Header("Ground")]
     public LayerMask groundMask;
@@ -25,6 +30,7 @@ public class Target_Base : MonoBehaviour
 
     Vector3[] route;
     int routeIndex;
+    float routePointTimer;
     bool reachedDestination;
 
     [Header("Death")]
@@ -73,6 +79,7 @@ public class Target_Base : MonoBehaviour
         destination = goal;
         route = corners;
         routeIndex = 0;
+        routePointTimer = 0f;
         reachedDestination = false;
 
         while (route != null &&
@@ -133,8 +140,18 @@ public class Target_Base : MonoBehaviour
     {
         if (route != null && routeIndex < route.Length)
         {
-            if (HorizontalDistance(route[routeIndex]) <= waypointRadius)
+            bool reached = HorizontalDistance(route[routeIndex]) <= waypointRadius;
+            if (!reached)
+            {
+                routePointTimer += Time.fixedDeltaTime;
+                reached = waypointSkipTime > 0f && routePointTimer >= waypointSkipTime;
+            }
+
+            if (reached)
+            {
                 routeIndex++;
+                routePointTimer = 0f;
+            }
         }
 
         if (route != null && routeIndex < route.Length)
@@ -256,9 +273,12 @@ public class Target_Base : MonoBehaviour
     protected virtual void Die()
     {
         isDead = true;
+        DisableColliders();
 
         rigidbody.linearVelocity = Vector3.zero;
         rigidbody.isKinematic = true;
+
+        GrantKillReward();
 
         if (animator)
         {
@@ -269,6 +289,31 @@ public class Target_Base : MonoBehaviour
         }
 
         StartCoroutine(DeathRoutine());
+    }
+
+    void DisableColliders()
+    {
+        Collider[] colliders = GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if (colliders[i] != null)
+                colliders[i].enabled = false;
+        }
+    }
+
+    void GrantKillReward()
+    {
+        if (isSample || killReward == 0)
+            return;
+
+        WaveDirector director = FindFirstObjectByType<WaveDirector>();
+        if (director == null)
+            return;
+
+        if (CompareTag("Friendly"))
+            director.AddFunds(-killReward);
+        else if (CompareTag("Enemy"))
+            director.AddFunds(killReward);
     }
 
     IEnumerator DeathRoutine()

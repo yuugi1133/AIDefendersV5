@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 8547562853408003745}
   - component: {fileID: 8990394378073370975}
   - component: {fileID: 3599409107662926658}
-  - component: {fileID: 1258609424682106978}
   - component: {fileID: 6422646501789810035}
   m_Layer: 0
   m_Name: Target spawner
@@ -92,27 +91,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!65 &1258609424682106978
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2222176649922653764}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &6422646501789810035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -125,6 +103,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27e68e70dae965d46adb419c6b6c36c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  spawnerId: 
   spawnRange: 20
   groundMask:
     serializedVersion: 2
@@ -132,3 +111,8 @@ MonoBehaviour:
   raycastHeight: 80
   spawnHeightOffset: 0.05
   maxPlaceAttempts: 8
+  destination: {fileID: 0}
+  paths: []
+  pickNearestPath: 0
+  pathWidth: 2
+  navMeshSampleDistance: 6

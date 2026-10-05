@@ -9,7 +9,10 @@ public class AIInputCapture : MonoBehaviour
     public Camera cctvCamera;
     public RenderTexture renderTexture;
 
-    public float CaptureDelay = 0.1f; //1�ʴ� ���� �ӵ�
+    public float CaptureDelay = 0.1f;
+
+    [Header("Debug")]
+    public bool logInferenceTime = true;
 
     Texture2D screenTexture;
 
@@ -103,9 +106,19 @@ public class AIInputCapture : MonoBehaviour
                 form
             );
 
-        yield return www.SendWebRequest();  //���̽� ������ ����
+        float sentAt = Time.realtimeSinceStartup;
+        yield return www.SendWebRequest();
+        float elapsedMs = (Time.realtimeSinceStartup - sentAt) * 1000f;
 
-        if (www.result == UnityWebRequest.Result.Success)   //�׸��� ����� �޾� ó��
+        if (logInferenceTime)
+        {
+            if (www.result == UnityWebRequest.Result.Success)
+                Debug.Log($"CCTV 추론 왕복 {elapsedMs:0.0} ms");
+            else
+                Debug.LogWarning($"CCTV 추론 실패 {elapsedMs:0.0} ms  {www.error}");
+        }
+
+        if (www.result == UnityWebRequest.Result.Success)
         {
             string json = www.downloadHandler.text;     
             Debug.Log(json);    //json ��� ���
@@ -125,7 +138,7 @@ public class AIInputCapture : MonoBehaviour
                 OnDetectionReceived?.Invoke(response);
             }
         }
-        else
+        else if (!logInferenceTime)
         {
             Debug.LogError(www.error);
         }

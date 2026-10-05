@@ -306,8 +306,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Turret_Test
   ammo: {fileID: 11400000, guid: 3f8a91c2e4b64d7e9a1c5d6e7f8a90b1, type: 2}
-  fireDelay: 0.5
-  maxAmmo: 10
+  fireDelay: 0.1
+  maxAmmo: 30
   reloadTime: 2
 --- !u!114 &7334818499382330747
 MonoBehaviour:
@@ -326,3 +326,5 @@ MonoBehaviour:
   rotationSpeed: 5
   fireAngleThreshold: 20
   range: 30
+  commandTimeout: 1.5
+  sellPrice: 40

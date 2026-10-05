@@ -25,11 +25,13 @@ public class WaveDirector : MonoBehaviour
     public WavePhase Phase { get; private set; } = WavePhase.Idle;
     public int CurrentWaveIndex { get; private set; } = -1;
     public float PhaseTimeRemaining { get; private set; }
+    public int Funds { get; private set; }
 
     public event Action<int, float> OnPrepStarted;
     public event Action<int> OnWaveStarted;
     public event Action<int> OnWaveEnded;
     public event Action OnStageComplete;
+    public event Action<int> OnFundsChanged;
 
     bool[] groupSpawned;
     WaveData currentWave;
@@ -58,7 +60,36 @@ public class WaveDirector : MonoBehaviour
         }
 
         CurrentWaveIndex = 0;
+        Funds = Mathf.Max(0, stage.startingFunds);
+        OnFundsChanged?.Invoke(Funds);
         EnterPrep(stage.firstPrepTime);
+    }
+
+    public bool CanAfford(int cost)
+    {
+        if (cost <= 0)
+            return true;
+
+        return Funds >= cost;
+    }
+
+    public bool TrySpend(int cost)
+    {
+        if (cost <= 0)
+            return true;
+
+        if (Funds < cost)
+            return false;
+
+        Funds -= cost;
+        OnFundsChanged?.Invoke(Funds);
+        return true;
+    }
+
+    public void AddFunds(int amount)
+    {
+        Funds = Mathf.Max(0, Funds + amount);
+        OnFundsChanged?.Invoke(Funds);
     }
 
     void Update()
@@ -247,23 +278,23 @@ public class WaveDirector : MonoBehaviour
         switch (Phase)
         {
             case WavePhase.Prep:
-                text = $"준비 시간\n다음 Wave {CurrentWaveIndex + 1}\n{PhaseTimeRemaining:0.0}s";
+                text = $"준비 시간\n다음 Wave {CurrentWaveIndex + 1}\n{PhaseTimeRemaining:0.0}s\n자금 {Funds}";
                 break;
             case WavePhase.Combat:
                 string waveName = currentWave != null && !string.IsNullOrEmpty(currentWave.waveName)
                     ? currentWave.waveName
                     : $"Wave {CurrentWaveIndex + 1}";
-                text = $"{waveName}\n남은 시간 {PhaseTimeRemaining:0.0}s";
+                text = $"{waveName}\n남은 시간 {PhaseTimeRemaining:0.0}s\n자금 {Funds}";
                 break;
             case WavePhase.Complete:
-                text = "스테이지 완료";
+                text = $"스테이지 완료\n자금 {Funds}";
                 break;
             default:
-                text = "대기";
+                text = $"대기\n자금 {Funds}";
                 break;
         }
 
-        GUI.Label(new Rect(20f, 20f, 320f, 80f), text);
+        GUI.Label(new Rect(20f, 20f, 320f, 100f), text);
     }
 
     void ResolveCameras()

@@ -5,6 +5,8 @@ public class TurretBuildOption
 {
     public string displayName;
     public GameObject prefab;
+    public int cost = 50;
+    public int sellPrice = 25;
 
     public string Label
     {

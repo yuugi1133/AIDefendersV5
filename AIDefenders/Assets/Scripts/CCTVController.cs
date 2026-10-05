@@ -1,7 +1,5 @@
+using System.Collections.Generic;
 using UnityEngine;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 public class CCTVController : MonoBehaviour
 {
@@ -12,28 +10,25 @@ public class CCTVController : MonoBehaviour
     public LayerMask detectionMask;
 
     public TurretController[] turrets;
-    GameObject[] enemies;
 
-    [Header("Rotation Range")]
-    public float yawMin = -60f;
-    public float yawMax = 60f;
-    public float pitchMin = -25f;
-    public float pitchMax = 30f;
+    [Header("YOLO Track")]
+    public int enemyClassId = 0;
+    public float minConfidence = 0.3f;
+    public List<YoloSighting> enemies = new List<YoloSighting>();
+    public List<YoloSighting> friendlies = new List<YoloSighting>();
 
-    [Header("Manual Aim")]
-    public float yawSpeed = 25f;
-    public float pitchSpeed = 20f;
+    class YoloTrack
+    {
+        public Target_Base target;
+        public bool asEnemy;
+        public float confidence;
+        public YoloTargetMarker marker;
+    }
 
-    WaveDirector waveDirector;
-    Quaternion restRotation;
-    float yawOffset;
-    float pitchOffset;
+    readonly Dictionary<Target_Base, YoloTrack> tracks = new Dictionary<Target_Base, YoloTrack>();
 
     void Start()
     {
-        restRotation = transform.localRotation;
-        waveDirector = FindFirstObjectByType<WaveDirector>();
-
         if (aiInput != null)
             aiInput.OnDetectionReceived += HandleDetections;
     }
@@ -56,6 +51,43 @@ public class CCTVController : MonoBehaviour
         turrets[turrets.Length - 1] = turret;
     }
 
+    public void UnregisterTurret(TurretController turret)
+    {
+        if (turret == null || turrets == null || turrets.Length == 0)
+            return;
+
+        int write = 0;
+        for (int i = 0; i < turrets.Length; i++)
+        {
+            if (turrets[i] == null || turrets[i] == turret)
+                continue;
+
+            turrets[write] = turrets[i];
+            write++;
+        }
+
+        if (write == turrets.Length)
+            return;
+
+        System.Array.Resize(ref turrets, write);
+    }
+
+    public bool TryGetIdentification(Target_Base target, out bool asEnemy)
+    {
+        asEnemy = false;
+        if (target == null)
+            return false;
+
+        if (!tracks.TryGetValue(target, out YoloTrack track))
+            return false;
+
+        if (track.target == null || track.target.isDead)
+            return false;
+
+        asEnemy = track.asEnemy;
+        return true;
+    }
+
     void OnDestroy()
     {
         if (aiInput != null)
@@ -64,99 +96,31 @@ public class CCTVController : MonoBehaviour
 
     void Update()
     {
-        UpdateManualAim();
+        PruneDeadTracks();
+        RebuildLists();
+        CommandTurrets();
     }
 
-    void UpdateManualAim()
-    {
-        if (waveDirector == null)
-            waveDirector = FindFirstObjectByType<WaveDirector>();
-
-        if (waveDirector == null || waveDirector.Phase != WavePhase.Combat)
-            return;
-
-        float yawInput = ReadYawInput();
-        float pitchInput = ReadPitchInput();
-
-        yawOffset = Mathf.Clamp(
-            yawOffset + yawInput * yawSpeed * Time.deltaTime,
-            yawMin,
-            yawMax
-        );
-
-        pitchOffset = Mathf.Clamp(
-            pitchOffset - pitchInput * pitchSpeed * Time.deltaTime,
-            pitchMin,
-            pitchMax
-        );
-
-        transform.localRotation =
-            restRotation * Quaternion.Euler(pitchOffset, yawOffset, 0f);
-    }
-
-    float ReadYawInput()
-    {
-        float value = 0f;
-
-#if ENABLE_INPUT_SYSTEM
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null)
-        {
-            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
-                value -= 1f;
-            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
-                value += 1f;
-            return value;
-        }
-#endif
-
-        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            value -= 1f;
-        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-            value += 1f;
-        return value;
-    }
-
-    float ReadPitchInput()
-    {
-        float value = 0f;
-
-#if ENABLE_INPUT_SYSTEM
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null)
-        {
-            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
-                value += 1f;
-            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
-                value -= 1f;
-            return value;
-        }
-#endif
-
-        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
-            value += 1f;
-        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
-            value -= 1f;
-        return value;
-    }
-
-    //포탑별로 해당 포탑과 가장 가까운 대상 찾기
-    Transform FindClosestEnemyInRange(TurretController turret, GameObject[] enemies)
+    //포탑별로 YOLO가 적이라고 본 대상 중 사거리 안 가장 가까운 대상 찾기
+    Transform FindClosestIdentifiedEnemy(TurretController turret)
     {
         float closestDist = Mathf.Infinity;
         Transform closest = null;
 
-        foreach (GameObject enemy in enemies)
+        foreach (YoloSighting sighting in enemies)
         {
+            if (sighting == null || sighting.target == null || sighting.target.isDead)
+                continue;
+
             float dist = Vector3.Distance(
                 turret.transform.position,
-                enemy.transform.position
+                sighting.target.transform.position
             );
 
             if (dist <= turret.range && dist < closestDist)
             {
                 closestDist = dist;
-                closest = enemy.transform;
+                closest = sighting.target.transform;
             }
         }
 
@@ -210,14 +174,7 @@ public class CCTVController : MonoBehaviour
         targetbase = null;
         target = null;
 
-        int mask = detectionMask.value;
-        if (mask == 0)
-        {
-            int enemyLayer = LayerMask.NameToLayer("Enemy");
-            mask = enemyLayer >= 0
-                ? (1 << enemyLayer)
-                : Physics.DefaultRaycastLayers;
-        }
+        int mask = GetDetectionMask();
 
         RaycastHit[] hits = Physics.RaycastAll(ray, 1000f, mask);
         if (hits == null || hits.Length == 0)
@@ -228,10 +185,7 @@ public class CCTVController : MonoBehaviour
         foreach (RaycastHit hit in hits)
         {
             Target_Base found = hit.collider.GetComponentInParent<Target_Base>();
-            if (found == null || found.isDead)
-                continue;
-
-            if (found.CompareTag("Enemy") == false)
+            if (found == null || found.isDead || found.isSample)
                 continue;
 
             targetbase = found;
@@ -242,26 +196,44 @@ public class CCTVController : MonoBehaviour
         return false;
     }
 
-    //탐지한 적 json 데이터 처리
+    int GetDetectionMask()
+    {
+        int mask = detectionMask.value;
+        int enemyLayer = LayerMask.NameToLayer("Enemy");
+        int friendlyLayer = LayerMask.NameToLayer("Friendly");
+
+        if (mask == 0)
+        {
+            if (enemyLayer >= 0)
+                mask |= 1 << enemyLayer;
+            if (friendlyLayer >= 0)
+                mask |= 1 << friendlyLayer;
+            if (mask == 0)
+                mask = Physics.DefaultRaycastLayers;
+            return mask;
+        }
+
+        if (enemyLayer >= 0)
+            mask |= 1 << enemyLayer;
+        if (friendlyLayer >= 0)
+            mask |= 1 << friendlyLayer;
+        return mask;
+    }
+
+    // YOLO 탐지 결과를 태그 정답이 아니라 모델 판단으로 적/아군 리스트에 넣는다.
     private void HandleDetections(DetectionResponse response)
     {
-        if (response == null)
-            return;
-
-        if (response.detections == null)
+        if (response == null || response.detections == null)
             return;
 
         foreach (var detection in response.detections)
         {
-            // 적 클래스만 처리
-            if (detection.class_id != 0)
+            if (detection.confidence < minConfidence)
                 continue;
 
-            // 신뢰도 필터 (0.5이상인 것만 사격)
-            if (detection.confidence < 0.5f)
+            if (cctvCamera == null)
                 continue;
 
-            // YOLO 이미지 내의 좌표를 Unity 좌표로 변환(주의: y축은 반전해야 한다.)
             Vector2 screenPos = new Vector2(
                     detection.center_x,
                     cctvCamera.pixelHeight
@@ -274,30 +246,122 @@ public class CCTVController : MonoBehaviour
             if (!TryFindTargetAlongRay(ray, out Target_Base targetbase, out Transform target))
                 continue;
 
-            if (turrets == null)
+            bool asEnemy = detection.class_id == enemyClassId;
+            UpsertTrack(targetbase, asEnemy, detection.confidence);
+        }
+
+        PruneDeadTracks();
+        RebuildLists();
+    }
+
+    void UpsertTrack(Target_Base target, bool asEnemy, float confidence)
+    {
+        if (tracks.TryGetValue(target, out YoloTrack track))
+        {
+            if (confidence <= track.confidence)
+                return;
+        }
+        else
+        {
+            track = new YoloTrack { target = target };
+            tracks[target] = track;
+        }
+
+        track.asEnemy = asEnemy;
+        track.confidence = confidence;
+        EnsureMarker(track);
+    }
+
+    void EnsureMarker(YoloTrack track)
+    {
+        if (track.target == null)
+            return;
+
+        if (track.marker == null)
+            track.marker = track.target.GetComponent<YoloTargetMarker>();
+
+        if (track.marker == null)
+            track.marker = track.target.gameObject.AddComponent<YoloTargetMarker>();
+
+        track.marker.enabled = true;
+        track.marker.SetClassifiedAsEnemy(track.asEnemy, track.confidence);
+    }
+
+    void PruneDeadTracks()
+    {
+        List<Target_Base> remove = null;
+        foreach (KeyValuePair<Target_Base, YoloTrack> pair in tracks)
+        {
+            YoloTrack track = pair.Value;
+            if (track.target != null && !track.target.isDead)
                 continue;
 
-            foreach (TurretController turret in turrets)
+            if (track.marker != null)
+                Destroy(track.marker);
+
+            if (remove == null)
+                remove = new List<Target_Base>();
+            remove.Add(pair.Key);
+        }
+
+        if (remove == null)
+            return;
+
+        for (int i = 0; i < remove.Count; i++)
+            tracks.Remove(remove[i]);
+    }
+
+    void RebuildLists()
+    {
+        enemies.Clear();
+        friendlies.Clear();
+
+        foreach (YoloTrack track in tracks.Values)
+        {
+            if (track.target == null || track.target.isDead)
+                continue;
+
+            if (track.asEnemy)
             {
-                if (turret == null || turret.firePoint == null)
-                    continue;
-
-                float distance =
-                    Vector3.Distance(turret.transform.position, target.position);
-
-                if (distance > turret.range)
-                    continue;
-
-                Vector3 aimPoint = CalculateInterceptPoint(turret, target);
-                turret.SetTarget(target, aimPoint);
-
-                Debug.DrawLine(
-                    turret.transform.position,
-                    aimPoint,
-                    Color.green,
-                    1f
-                );
+                enemies.Add(new YoloSighting
+                {
+                    target = track.target,
+                    confidence = track.confidence
+                });
             }
+            else
+            {
+                friendlies.Add(new YoloSighting
+                {
+                    target = track.target,
+                    confidence = track.confidence
+                });
+            }
+        }
+    }
+
+    void CommandTurrets()
+    {
+        if (turrets == null)
+            return;
+
+        foreach (TurretController turret in turrets)
+        {
+            if (turret == null || turret.firePoint == null)
+                continue;
+
+            Transform target = FindClosestIdentifiedEnemy(turret);
+            if (target == null)
+                continue;
+
+            Vector3 aimPoint = CalculateInterceptPoint(turret, target);
+            turret.SetTarget(target, aimPoint);
+
+            Debug.DrawLine(
+                turret.transform.position,
+                aimPoint,
+                Color.green
+            );
         }
     }
 }
