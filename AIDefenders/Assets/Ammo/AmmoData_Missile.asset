@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7123554aa18fc10498a03ac670fc2a4c, type: 3}
   m_Name: AmmoData_Missile
   m_EditorClassIdentifier: Assembly-CSharp::AmmoData
-  fireMode: 1
+  fireMode: 0
   damage: 120
   bulletSpeed: 16
   gravity: 0
@@ -25,3 +25,9 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  muzzleEffect: {fileID: 100002, guid: 6890a03af913b874092fbb1e8337747d, type: 3}
+  trailEffect: {fileID: 0}
+  impactEffect: {fileID: 100006, guid: a49596ebf788acd4ab1281bffea444b1, type: 3}
+  beamWidth: 0.12
+  beamColor: {r: 1, g: 0.35, b: 0.12, a: 0.9}
+  beamCoreColor: {r: 1, g: 0.92, b: 0.75, a: 1}

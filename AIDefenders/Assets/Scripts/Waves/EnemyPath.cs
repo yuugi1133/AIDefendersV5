@@ -5,7 +5,7 @@ public class EnemyPath : MonoBehaviour
     [Tooltip("비우면 자식 Transform 순서를 웨이포인트로 사용합니다.")]
     public Transform[] waypoints;
 
-    [Tooltip("각 웨이포인트에서 대상이 고를 무작위 목표의 반경.")]
+    [Tooltip("길 옆으로 흩어질 최대 거리. 대상마다 한 차선을 골라 전 구간을 같은 간격으로 따라갑니다.")]
     public float waypointRadius = 4f;
 
     public Color gizmoColor = new Color(0.2f, 0.85f, 1f, 0.9f);
@@ -40,17 +40,58 @@ public class EnemyPath : MonoBehaviour
         return world;
     }
 
-    public Vector3[] GetScatteredWorldPoints()
+    public float RandomLaneOffset()
+    {
+        float radius = Mathf.Max(0f, waypointRadius);
+        if (radius <= 0.01f)
+            return 0f;
+
+        return Random.Range(-radius, radius);
+    }
+
+    public Vector3[] GetLaneOffsetPoints(float laneOffset)
     {
         Vector3[] centers = GetWorldPoints();
         if (centers.Length == 0)
             return centers;
 
-        float radius = Mathf.Max(0f, waypointRadius);
-        Vector3[] scattered = new Vector3[centers.Length];
+        if (Mathf.Abs(laneOffset) <= 0.01f)
+            return centers;
+
+        Vector3[] offset = new Vector3[centers.Length];
         for (int i = 0; i < centers.Length; i++)
-            scattered[i] = ScatterPoint(centers[i], radius);
-        return scattered;
+        {
+            Vector3 tangent = TangentAt(centers, i);
+            Vector3 perp = new Vector3(-tangent.z, 0f, tangent.x);
+            offset[i] = centers[i] + perp * laneOffset;
+        }
+
+        return offset;
+    }
+
+    static Vector3 TangentAt(Vector3[] points, int index)
+    {
+        Vector3 incoming = Vector3.zero;
+        Vector3 outgoing = Vector3.zero;
+        if (index > 0)
+            incoming = Flatten(points[index] - points[index - 1]);
+        if (index < points.Length - 1)
+            outgoing = Flatten(points[index + 1] - points[index]);
+
+        Vector3 tangent = incoming.normalized + outgoing.normalized;
+        if (tangent.sqrMagnitude < 0.0001f)
+            tangent = incoming.sqrMagnitude > 0.0001f ? incoming : outgoing;
+        if (tangent.sqrMagnitude < 0.0001f)
+            return Vector3.forward;
+
+        tangent.y = 0f;
+        return tangent.normalized;
+    }
+
+    static Vector3 Flatten(Vector3 value)
+    {
+        value.y = 0f;
+        return value;
     }
 
     public static Vector3 ScatterPoint(Vector3 center, float radius)

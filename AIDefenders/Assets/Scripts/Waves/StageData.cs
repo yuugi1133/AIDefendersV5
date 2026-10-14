@@ -32,5 +32,6 @@ public class StageData : ScriptableObject
 {
     public float firstPrepTime = 10f;
     public int startingFunds = 300;
+    public float startingBaseHP = 20f;
     public WaveData[] waves;
 }

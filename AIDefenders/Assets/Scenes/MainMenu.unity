@@ -954,6 +954,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 051bb07a1cfab86499af1548c403c4f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  campaignStages:
+  - displayName: Grassfield 1
+    sceneName: Grassfield_1
+    description: 초원 지대
 --- !u!4 &623362528
 Transform:
   m_ObjectHideFlags: 0
@@ -1483,14 +1487,14 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 623362527}
         m_TargetAssemblyTypeName: MenuManager_MainMenu, Assembly-CSharp
-        m_MethodName: LoadScene
-        m_Mode: 5
+        m_MethodName: OpenCampaign
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: AIDefenders
+          m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!114 &1125069979

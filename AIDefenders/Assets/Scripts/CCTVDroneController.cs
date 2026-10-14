@@ -74,8 +74,9 @@ public class CCTVDroneController : MonoBehaviour
             waveDirector.OnStageComplete += HandleStageComplete;
         }
 
-        bool combat = waveDirector != null && waveDirector.Phase == WavePhase.Combat;
-        SetFlying(combat);
+        bool inPlay = waveDirector != null &&
+            (waveDirector.Phase == WavePhase.Prep || waveDirector.Phase == WavePhase.Combat);
+        SetFlying(inPlay);
     }
 
     void OnDestroy()
@@ -95,7 +96,7 @@ public class CCTVDroneController : MonoBehaviour
 
     void HandlePrepStarted(int waveIndex, float duration)
     {
-        SetFlying(false);
+        SetFlying(true);
     }
 
     void HandleStageComplete()

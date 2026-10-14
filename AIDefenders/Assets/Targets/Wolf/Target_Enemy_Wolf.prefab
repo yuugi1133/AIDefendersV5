@@ -1236,15 +1236,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56f67b06764ad834eb72ba888d1cc1e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_Wolf
-  maxHP: 100
+  maxHP: 40
   currentHP: 0
-  moveSpeed: 6
+  moveSpeed: 12
   isSample: 0
-  killReward: 10
   destination: {fileID: 0}
   waypointRadius: 1.2
   arriveDistance: 1.5
   turnSpeed: 8
+  waypointSkipTime: 2.5
   groundMask:
     serializedVersion: 2
     m_Bits: 0
@@ -1257,6 +1257,9 @@ MonoBehaviour:
   animator: {fileID: 4665554691871557518}
   renderer: {fileID: 393502265896259782}
   rigidbody: {fileID: 4344226870335729210}
+  killFunds: 10
+  killScore: 10
+  baseDamage: 1
 --- !u!1 &8972186737345477160
 GameObject:
   m_ObjectHideFlags: 0

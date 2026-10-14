@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -15,6 +17,7 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     WaveDirector waveDirector;
     CCTVController cctv;
+    CCTVDroneController drone;
     GameObject ghost;
     GameObject draggingPrefab;
     TurretPlatform hoverPlatform;
@@ -23,24 +26,73 @@ public class TurretPlatformPlacer : MonoBehaviour
     bool canPlace;
     int pendingTurretCost;
     int pendingTurretSellPrice;
-    Vector2 turretScroll;
-    Rect platformButtonRect;
-    Rect turretListRect;
-    Rect sellButtonRect;
-    Rect combatHeaderRect;
+    float pendingTurretBuildTime;
+    string pendingTurretDisplayName;
+    int pendingTurretUpgradeLevel;
+    StoredTurret pendingStored;
+    readonly List<StoredTurret> storedTurrets = new List<StoredTurret>();
+    readonly List<RaycastResult> uiRaycasts = new List<RaycastResult>();
     bool combatBuildOpen;
-    bool sellMode;
+    TurretController selectedTurret;
+    Renderer[] highlightRenderers;
+    Color[][] highlightOriginalColors;
     Color validColor = new Color(0.35f, 0.85f, 0.4f, 1f);
     Color invalidColor = new Color(0.9f, 0.25f, 0.2f, 1f);
+    Color highlightColor = new Color(1f, 0.82f, 0.22f, 1f);
 
     public bool BlocksPlayerLook
     {
-        get { return IsCombat() && combatBuildOpen; }
+        get { return ShowBuildUi; }
     }
 
-    bool ShowBuildUi
+    public bool ShowBuildUi
     {
-        get { return IsPrep() || BlocksPlayerLook; }
+        get { return IsHudPhase && combatBuildOpen; }
+    }
+
+    public bool IsHudPhase
+    {
+        get { return IsPrep() || IsCombat(); }
+    }
+
+    public bool IsPrepPhase
+    {
+        get { return IsPrep(); }
+    }
+
+    public bool IsDragging
+    {
+        get { return Dragging; }
+    }
+
+    public bool IsDraggingPlatform
+    {
+        get { return draggingPlatform; }
+    }
+
+    public GameObject DraggingPrefab
+    {
+        get { return draggingPrefab; }
+    }
+
+    public TurretController SelectedTurret
+    {
+        get { return selectedTurret; }
+    }
+
+    public IReadOnlyList<StoredTurret> Stored
+    {
+        get { return storedTurrets; }
+    }
+
+    public int PlatformCost
+    {
+        get { return GetPlatformCost(); }
+    }
+
+    public bool HasPlatformPrefab
+    {
+        get { return platformPrefab != null; }
     }
 
     bool Dragging
@@ -52,8 +104,36 @@ public class TurretPlatformPlacer : MonoBehaviour
     {
         waveDirector = FindFirstObjectByType<WaveDirector>();
         cctv = FindFirstObjectByType<CCTVController>();
+        drone = FindFirstObjectByType<CCTVDroneController>();
         if (platformPrefab == null)
             Debug.LogWarning("TurretPlatformPlacer: Platform Prefab이 비어 있습니다.");
+
+        if (waveDirector != null)
+        {
+            waveDirector.OnPrepStarted += HandlePrepStarted;
+            waveDirector.OnWaveStarted += HandleWaveStarted;
+        }
+    }
+
+    void OnDestroy()
+    {
+        ClearSelection();
+
+        if (waveDirector == null)
+            return;
+
+        waveDirector.OnPrepStarted -= HandlePrepStarted;
+        waveDirector.OnWaveStarted -= HandleWaveStarted;
+    }
+
+    void HandlePrepStarted(int waveIndex, float duration)
+    {
+        CancelPlace();
+    }
+
+    void HandleWaveStarted(int waveIndex)
+    {
+        CancelPlace();
     }
 
     void Update()
@@ -62,6 +142,8 @@ public class TurretPlatformPlacer : MonoBehaviour
             waveDirector = FindFirstObjectByType<WaveDirector>();
         if (cctv == null)
             cctv = FindFirstObjectByType<CCTVController>();
+        if (drone == null)
+            drone = FindFirstObjectByType<CCTVDroneController>();
 
         HandleCombatBuildToggle();
 
@@ -70,9 +152,9 @@ public class TurretPlatformPlacer : MonoBehaviour
 
         if (!ShowBuildUi)
         {
-            if (Dragging || sellMode)
+            if (Dragging || selectedTurret != null)
             {
-                sellMode = false;
+                ClearSelection();
                 CancelPlace();
             }
             return;
@@ -86,15 +168,15 @@ public class TurretPlatformPlacer : MonoBehaviour
                 return;
             }
 
-            if (sellMode)
-                sellMode = false;
+            if (selectedTurret != null)
+            {
+                ClearSelection();
+                return;
+            }
         }
 
-        if (sellMode && !Dragging && WasLeftPressed() && !IsPointerOverBuildUi())
-        {
-            TrySellHoveredTurret();
-            return;
-        }
+        if (!Dragging && WasLeftPressed() && !IsPointerOverBuildUi())
+            TrySelectClickedTurret();
 
         if (!Dragging)
             return;
@@ -113,117 +195,67 @@ public class TurretPlatformPlacer : MonoBehaviour
         }
     }
 
-    void OnGUI()
+    public void ToggleBuildMenu()
     {
-        if (!ShowBuildUi)
+        if (!IsHudPhase)
             return;
 
-        float y = 110f;
-        if (BlocksPlayerLook)
-        {
-            combatHeaderRect = new Rect(20f, y, 240f, 36f);
-            GUI.Box(combatHeaderRect, "건설 모드  Tab 닫기");
-            y += 40f;
-        }
-        else
-        {
-            combatHeaderRect = new Rect(0f, 0f, 0f, 0f);
-            DrawPlatformButton(y);
-            y += 56f;
-        }
-
-        DrawTurretList(y);
-        y += 228f;
-        DrawSellButton(y);
+        combatBuildOpen = !combatBuildOpen;
+        ClearSelection();
+        CancelPlace();
     }
 
-    void DrawPlatformButton(float y)
+    public void RequestPlatformPlace()
     {
-        platformButtonRect = new Rect(20f, y, 240f, 48f);
-        if (platformPrefab == null)
-            return;
-
-        string label = draggingPlatform
-            ? "배치 중... 우클릭 취소"
-            : $"포탑 플랫폼 설치  ${GetPlatformCost()}";
-        GUI.Box(platformButtonRect, label);
-
-        Event current = Event.current;
-        if (current == null || Dragging || sellMode)
-            return;
-
-        if (current.type == EventType.MouseDown &&
-            current.button == 0 &&
-            platformButtonRect.Contains(current.mousePosition))
-        {
+        if (!Dragging)
             BeginPlatformPlace();
-            current.Use();
-        }
     }
 
-    void DrawTurretList(float y)
+    public void RequestTurretPlace(TurretBuildOption option)
     {
-        turretListRect = new Rect(20f, y, 240f, 220f);
-        GUI.Box(turretListRect, "");
-
-        GUILayout.BeginArea(new Rect(
-            turretListRect.x + 6f,
-            turretListRect.y + 6f,
-            turretListRect.width - 12f,
-            turretListRect.height - 12f
-        ));
-        GUILayout.Label("포탑");
-
-        int count = turretOptions != null ? turretOptions.Length : 0;
-        turretScroll = GUILayout.BeginScrollView(turretScroll, false, true);
-
-        Event current = Event.current;
-        for (int i = 0; i < count; i++)
-        {
-            TurretBuildOption option = turretOptions[i];
-            if (option == null || option.prefab == null)
-                continue;
-
-            Rect row = GUILayoutUtility.GetRect(0f, 44f, GUILayout.ExpandWidth(true));
-            GUI.Box(row, draggingTurret && draggingPrefab == option.prefab
-                ? "배치 중..."
-                : $"{option.Label}  ${option.cost}");
-
-            if (Dragging || sellMode || current == null)
-                continue;
-
-            if (current.type == EventType.MouseDown &&
-                current.button == 0 &&
-                row.Contains(current.mousePosition))
-            {
-                BeginTurretPlace(option);
-                current.Use();
-            }
-        }
-
-        GUILayout.EndScrollView();
-        GUILayout.EndArea();
+        if (!Dragging)
+            BeginTurretPlace(option);
     }
 
-    void DrawSellButton(float y)
+    public void RequestStoredPlace(int index)
     {
-        sellButtonRect = new Rect(20f, y, 240f, 44f);
-        string label = sellMode
-            ? "판매 중... 포탑을 클릭"
-            : "포탑 판매";
-        GUI.Box(sellButtonRect, label);
+        if (!Dragging)
+            BeginStoredPlace(index);
+    }
 
-        Event current = Event.current;
-        if (current == null || Dragging)
-            return;
+    public void RequestSellSelected()
+    {
+        TrySellSelectedTurret();
+    }
 
-        if (current.type == EventType.MouseDown &&
-            current.button == 0 &&
-            sellButtonRect.Contains(current.mousePosition))
-        {
-            sellMode = !sellMode;
-            current.Use();
-        }
+    public void RequestUpgradeSelected()
+    {
+        TryUpgradeSelectedTurret();
+    }
+
+    public void RequestStoreSelected()
+    {
+        TryStoreSelectedTurret();
+    }
+
+    public int GetSelectedSellPrice()
+    {
+        return GetSellPrice(selectedTurret);
+    }
+
+    public Camera GetHudCamera()
+    {
+        return GetPlaceCamera();
+    }
+
+    public static string AmmoStatus(TurretController turret)
+    {
+        return GetAmmoStatus(turret);
+    }
+
+    public static string StateLabel(TurretController turret)
+    {
+        return GetTurretStateLabel(turret);
     }
 
     bool IsPrep()
@@ -238,18 +270,14 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     void HandleCombatBuildToggle()
     {
-        if (!IsCombat())
+        if (!IsHudPhase)
         {
             combatBuildOpen = false;
             return;
         }
 
-        if (!WasTabPressed())
-            return;
-
-        combatBuildOpen = !combatBuildOpen;
-        sellMode = false;
-        CancelPlace();
+        if (WasTabPressed())
+            ToggleBuildMenu();
     }
 
     void BeginPlatformPlace()
@@ -257,7 +285,7 @@ public class TurretPlatformPlacer : MonoBehaviour
         if (!IsPrep())
             return;
 
-        sellMode = false;
+        ClearSelection();
         BeginGhost(platformPrefab, true);
     }
 
@@ -266,10 +294,40 @@ public class TurretPlatformPlacer : MonoBehaviour
         if (option == null)
             return;
 
-        sellMode = false;
+        ClearSelection();
         pendingTurretCost = option.cost;
         pendingTurretSellPrice = option.sellPrice;
+        pendingTurretBuildTime = option.buildTime;
+        pendingTurretDisplayName = option.Label;
+        pendingTurretUpgradeLevel = 1;
+        pendingStored = null;
         BeginGhost(option.prefab, false);
+    }
+
+    void BeginStoredPlace(int index)
+    {
+        if (index < 0 || index >= storedTurrets.Count)
+            return;
+
+        StoredTurret stored = storedTurrets[index];
+        if (stored == null || stored.prefab == null)
+            return;
+
+        ClearSelection();
+        storedTurrets.RemoveAt(index);
+        pendingStored = stored;
+        pendingTurretCost = 0;
+        pendingTurretSellPrice = stored.sellPrice;
+        pendingTurretBuildTime = stored.buildTime;
+        pendingTurretDisplayName = stored.displayName;
+        pendingTurretUpgradeLevel = stored.upgradeLevel;
+        BeginGhost(stored.prefab, false);
+
+        if (ghost == null)
+        {
+            storedTurrets.Add(stored);
+            pendingStored = null;
+        }
     }
 
     void BeginGhost(GameObject prefab, bool platform)
@@ -288,6 +346,14 @@ public class TurretPlatformPlacer : MonoBehaviour
         Collider[] colliders = ghost.GetComponentsInChildren<Collider>();
         for (int i = 0; i < colliders.Length; i++)
             colliders[i].enabled = false;
+
+        TurretController[] ghostTurrets = ghost.GetComponentsInChildren<TurretController>(true);
+        for (int i = 0; i < ghostTurrets.Length; i++)
+            ghostTurrets[i].enabled = false;
+
+        WeaponSystem[] ghostWeapons = ghost.GetComponentsInChildren<WeaponSystem>(true);
+        for (int i = 0; i < ghostWeapons.Length; i++)
+            ghostWeapons[i].enabled = false;
 
         if (platform)
             UpdatePlatformGhost();
@@ -413,24 +479,35 @@ public class TurretPlatformPlacer : MonoBehaviour
         Quaternion rot = platform.transform.rotation;
         int cost = pendingTurretCost;
         int sellPrice = pendingTurretSellPrice;
+        float buildTime = pendingTurretBuildTime;
+        string displayName = pendingTurretDisplayName;
+        int upgradeLevel = pendingTurretUpgradeLevel;
+        GameObject sourcePrefab = prefab;
         if (!TrySpend(cost))
         {
             CancelPlace();
             return;
         }
 
+        pendingStored = null;
         ClearGhost();
 
         GameObject placed = Instantiate(prefab, pos, rot, platform.transform);
 
         TurretController turret = placed.GetComponentInChildren<TurretController>();
         if (turret != null)
+        {
             turret.sellPrice = sellPrice;
+            turret.sourcePrefab = sourcePrefab;
+            turret.upgradeLevel = Mathf.Max(1, upgradeLevel);
+            if (!string.IsNullOrWhiteSpace(displayName))
+                turret.displayName = displayName;
+        }
 
         platform.Mount(turret);
 
-        if (cctv != null && turret != null)
-            cctv.RegisterTurret(turret);
+        if (turret != null)
+            turret.BeginConstruction(buildTime, IsPrep(), cctv);
     }
 
     void CancelPlace()
@@ -443,6 +520,12 @@ public class TurretPlatformPlacer : MonoBehaviour
         if (ghost != null)
             Destroy(ghost);
 
+        if (pendingStored != null)
+        {
+            storedTurrets.Add(pendingStored);
+            pendingStored = null;
+        }
+
         ghost = null;
         draggingPrefab = null;
         hoverPlatform = null;
@@ -451,11 +534,122 @@ public class TurretPlatformPlacer : MonoBehaviour
         canPlace = false;
         pendingTurretCost = 0;
         pendingTurretSellPrice = 0;
+        pendingTurretBuildTime = 0f;
+        pendingTurretDisplayName = "";
+        pendingTurretUpgradeLevel = 1;
     }
 
-    void TrySellHoveredTurret()
+    void TrySelectClickedTurret()
     {
         TurretController turret = FindHoveredTurret();
+        if (turret == null)
+        {
+            ClearSelection();
+            return;
+        }
+
+        SelectTurret(turret);
+    }
+
+    void SelectTurret(TurretController turret)
+    {
+        if (turret == null)
+        {
+            ClearSelection();
+            return;
+        }
+
+        TurretPlatform platform = turret.GetComponentInParent<TurretPlatform>();
+        if (platform != null && platform.mountedTurret != null)
+            turret = platform.mountedTurret;
+
+        if (selectedTurret == turret)
+            return;
+
+        ClearHighlight();
+        selectedTurret = turret;
+        ApplyHighlight(selectedTurret);
+    }
+
+    void ClearSelection()
+    {
+        ClearHighlight();
+        selectedTurret = null;
+    }
+
+    void ApplyHighlight(TurretController turret)
+    {
+        if (turret == null)
+            return;
+
+        highlightRenderers = turret.GetComponentsInChildren<Renderer>();
+        highlightOriginalColors = new Color[highlightRenderers.Length][];
+        for (int i = 0; i < highlightRenderers.Length; i++)
+        {
+            Renderer renderer = highlightRenderers[i];
+            if (renderer == null)
+                continue;
+
+            Material[] materials = renderer.materials;
+            highlightOriginalColors[i] = new Color[materials.Length];
+            for (int m = 0; m < materials.Length; m++)
+            {
+                if (materials[m] == null)
+                    continue;
+
+                highlightOriginalColors[i][m] = ReadMaterialColor(materials[m]);
+                WriteMaterialColor(materials[m], highlightColor);
+            }
+        }
+    }
+
+    void ClearHighlight()
+    {
+        if (highlightRenderers == null || highlightOriginalColors == null)
+        {
+            highlightRenderers = null;
+            highlightOriginalColors = null;
+            return;
+        }
+
+        for (int i = 0; i < highlightRenderers.Length; i++)
+        {
+            Renderer renderer = highlightRenderers[i];
+            if (renderer == null || highlightOriginalColors[i] == null)
+                continue;
+
+            Material[] materials = renderer.materials;
+            for (int m = 0; m < materials.Length && m < highlightOriginalColors[i].Length; m++)
+            {
+                if (materials[m] != null)
+                    WriteMaterialColor(materials[m], highlightOriginalColors[i][m]);
+            }
+        }
+
+        highlightRenderers = null;
+        highlightOriginalColors = null;
+    }
+
+    static Color ReadMaterialColor(Material material)
+    {
+        if (material.HasProperty("_BaseColor"))
+            return material.GetColor("_BaseColor");
+        if (material.HasProperty("_Color"))
+            return material.GetColor("_Color");
+        return Color.white;
+    }
+
+    static void WriteMaterialColor(Material material, Color color)
+    {
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", color);
+        if (material.HasProperty("_Color"))
+            material.SetColor("_Color", color);
+    }
+
+    void TrySellSelectedTurret()
+    {
+        TurretController turret = selectedTurret;
         if (turret == null)
             return;
 
@@ -470,6 +664,45 @@ public class TurretPlatformPlacer : MonoBehaviour
         if (waveDirector != null && refund > 0)
             waveDirector.AddFunds(refund);
 
+        RemoveMountedTurret(turret, platform);
+    }
+
+    void TryStoreSelectedTurret()
+    {
+        TurretController turret = selectedTurret;
+        if (turret == null)
+            return;
+
+        TurretPlatform platform = turret.GetComponentInParent<TurretPlatform>();
+        if (platform == null)
+            return;
+
+        if (platform.mountedTurret != null)
+            turret = platform.mountedTurret;
+
+        GameObject prefab = GetSourcePrefab(turret);
+        if (prefab == null)
+        {
+            Debug.LogWarning("보관할 포탑 프리팹을 찾지 못했습니다.");
+            return;
+        }
+
+        var stored = new StoredTurret();
+        stored.prefab = prefab;
+        stored.displayName = turret.TypeLabel;
+        stored.sellPrice = Mathf.Max(0, turret.sellPrice);
+        stored.buildTime = GetBuildTime(turret);
+        stored.upgradeLevel = Mathf.Max(1, turret.upgradeLevel);
+        storedTurrets.Add(stored);
+
+        RemoveMountedTurret(turret, platform);
+    }
+
+    void RemoveMountedTurret(TurretController turret, TurretPlatform platform)
+    {
+        if (turret == null || platform == null)
+            return;
+
         if (cctv != null)
             cctv.UnregisterTurret(turret);
 
@@ -477,9 +710,52 @@ public class TurretPlatformPlacer : MonoBehaviour
         while (instance.parent != null && instance.parent != platform.transform)
             instance = instance.parent;
 
+        ClearSelection();
         Destroy(instance.gameObject);
         platform.Mount(null);
-        sellMode = false;
+    }
+
+    static string GetAmmoStatus(TurretController turret)
+    {
+        if (turret == null)
+            return "-";
+
+        WeaponSystem weapon = turret.weapon;
+        if (weapon == null)
+            weapon = turret.GetComponentInChildren<WeaponSystem>();
+        if (weapon == null)
+            return "없음";
+
+        if (weapon.IsReloading)
+            return weapon.AmmoLabel + "  재장전 중";
+
+        return weapon.AmmoLabel + "  " + weapon.CurrentAmmo + "/" + weapon.MagazineSize;
+    }
+
+    static string GetTurretStateLabel(TurretController turret)
+    {
+        if (turret == null)
+            return "-";
+        if (turret.IsConstructing)
+            return "건설 중";
+        if (turret.IsUpgrading)
+            return "업그레이드 중";
+        if (!turret.IsReady)
+            return "대기";
+        return "가동";
+    }
+
+    void TryUpgradeSelectedTurret()
+    {
+        TurretController turret = selectedTurret;
+        if (turret == null || !turret.CanUpgrade())
+            return;
+
+        int cost = turret.NextUpgradeCost();
+        if (!TrySpend(cost))
+            return;
+
+        turret.BeginUpgrade(IsPrep());
     }
 
     int GetSellPrice(TurretController turret)
@@ -487,8 +763,9 @@ public class TurretPlatformPlacer : MonoBehaviour
         if (turret == null)
             return 0;
 
-        if (turret.sellPrice > 0)
-            return turret.sellPrice;
+        int value = turret.GetSellValue();
+        if (value > 0)
+            return value;
 
         if (turretOptions == null)
             return 0;
@@ -513,6 +790,61 @@ public class TurretPlatformPlacer : MonoBehaviour
         }
 
         return 0;
+    }
+
+    GameObject GetSourcePrefab(TurretController turret)
+    {
+        if (turret == null)
+            return null;
+
+        if (turret.sourcePrefab != null)
+            return turret.sourcePrefab;
+
+        TurretBuildOption option = FindBuildOption(turret);
+        return option != null ? option.prefab : null;
+    }
+
+    float GetBuildTime(TurretController turret)
+    {
+        TurretBuildOption option = FindBuildOption(turret);
+        if (option != null)
+            return option.buildTime;
+        return 3f;
+    }
+
+    TurretBuildOption FindBuildOption(TurretController turret)
+    {
+        if (turret == null || turretOptions == null)
+            return null;
+
+        if (turret.sourcePrefab != null)
+        {
+            for (int i = 0; i < turretOptions.Length; i++)
+            {
+                TurretBuildOption option = turretOptions[i];
+                if (option != null && option.prefab == turret.sourcePrefab)
+                    return option;
+            }
+        }
+
+        Transform named = turret.transform;
+        while (named.parent != null && named.parent.GetComponent<TurretPlatform>() == null)
+            named = named.parent;
+
+        string turretName = named.name;
+        for (int i = 0; i < turretOptions.Length; i++)
+        {
+            TurretBuildOption option = turretOptions[i];
+            if (option == null || option.prefab == null)
+                continue;
+
+            if (turretName.StartsWith(option.prefab.name) ||
+                turret.name.StartsWith(option.prefab.name) ||
+                turret.TypeLabel == option.Label)
+                return option;
+        }
+
+        return null;
     }
 
     TurretController FindHoveredTurret()
@@ -577,6 +909,11 @@ public class TurretPlatformPlacer : MonoBehaviour
         }
 
         return count;
+    }
+
+    public bool CanAffordCost(int cost)
+    {
+        return CanAfford(cost);
     }
 
     bool CanAfford(int cost)
@@ -731,29 +1068,56 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     bool IsPointerOverBuildUi()
     {
-        Vector2 guiMouse = GuiMousePosition();
-        if (platformPrefab != null && platformButtonRect.Contains(guiMouse))
-            return true;
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null)
+            return false;
 
-        if (combatHeaderRect.width > 0f && combatHeaderRect.Contains(guiMouse))
-            return true;
-
-        if (sellButtonRect.Contains(guiMouse))
-            return true;
-
-        return turretListRect.Contains(guiMouse);
+        PointerEventData pointer = new PointerEventData(eventSystem);
+        pointer.position = GetMouseScreenPosition();
+        uiRaycasts.Clear();
+        eventSystem.RaycastAll(pointer, uiRaycasts);
+        return uiRaycasts.Count > 0;
     }
 
     Camera GetPlaceCamera()
     {
-        if (waveDirector != null &&
-            waveDirector.preparationCamera != null &&
-            waveDirector.preparationCamera.enabled)
-        {
-            return waveDirector.preparationCamera;
-        }
+        Camera best = null;
+        float bestDepth = float.MinValue;
 
-        return Camera.main;
+        if (cctv != null)
+            PickScreenCamera(cctv.GetComponentsInChildren<Camera>(true), ref best, ref bestDepth);
+
+        if (drone != null)
+            PickScreenCamera(drone.GetComponentsInChildren<Camera>(true), ref best, ref bestDepth);
+
+        if (best != null)
+            return best;
+
+        Camera main = Camera.main;
+        if (main != null && main.targetTexture == null && main.enabled)
+            return main;
+
+        return best;
+    }
+
+    static void PickScreenCamera(Camera[] cameras, ref Camera best, ref float bestDepth)
+    {
+        if (cameras == null)
+            return;
+
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            Camera camera = cameras[i];
+            if (camera == null || !camera.enabled || !camera.gameObject.activeInHierarchy)
+                continue;
+            if (camera.targetTexture != null)
+                continue;
+            if (best != null && camera.depth < bestDepth)
+                continue;
+
+            best = camera;
+            bestDepth = camera.depth;
+        }
     }
 
     int GetGroundMask()
@@ -773,12 +1137,6 @@ public class TurretPlatformPlacer : MonoBehaviour
             return Mouse.current.position.ReadValue();
 #endif
         return Input.mousePosition;
-    }
-
-    Vector2 GuiMousePosition()
-    {
-        Vector3 screen = GetMouseScreenPosition();
-        return new Vector2(screen.x, Screen.height - screen.y);
     }
 
     bool WasLeftReleased()

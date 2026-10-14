@@ -73,7 +73,10 @@ public class EnemySpawner : MonoBehaviour
     {
         EnemyPath path = PickPath(spawnPos);
         if (path != null && path.PointCount > 0)
-            return AppendDestination(path.GetScatteredWorldPoints());
+        {
+            float lane = path.RandomLaneOffset();
+            return AppendDestination(path.GetLaneOffsetPoints(lane), lane);
+        }
 
         if (destination != null &&
             TryBuildNavMeshRoute(spawnPos, destination.position, out Vector3[] navCorners))
@@ -136,12 +139,18 @@ public class EnemySpawner : MonoBehaviour
         return lastValid;
     }
 
-    Vector3[] AppendDestination(Vector3[] corners)
+    Vector3[] AppendDestination(Vector3[] corners, float laneOffset)
     {
         if (destination == null)
             return corners;
 
-        Vector3 goal = EnemyPath.ScatterPoint(destination.position, destinationRadius);
+        Vector3 goal = OffsetAlongLastSegment(
+            corners,
+            destination.position,
+            laneOffset,
+            destinationRadius
+        );
+
         if (corners == null || corners.Length == 0)
             return new[] { goal };
 
@@ -152,6 +161,24 @@ public class EnemySpawner : MonoBehaviour
         System.Array.Copy(corners, withGoal, corners.Length);
         withGoal[corners.Length] = goal;
         return withGoal;
+    }
+
+    static Vector3 OffsetAlongLastSegment(
+        Vector3[] corners,
+        Vector3 center,
+        float laneOffset,
+        float maxRadius)
+    {
+        Vector3 tangent = Vector3.forward;
+        if (corners != null && corners.Length > 0)
+            tangent = Flatten(center - corners[corners.Length - 1]);
+        if (tangent.sqrMagnitude < 0.0001f)
+            tangent = Vector3.forward;
+
+        tangent.Normalize();
+        Vector3 perp = new Vector3(-tangent.z, 0f, tangent.x);
+        float offset = Mathf.Clamp(laneOffset, -Mathf.Abs(maxRadius), Mathf.Abs(maxRadius));
+        return center + perp * offset;
     }
 
     bool TryBuildNavMeshRoute(Vector3 from, Vector3 to, out Vector3[] corners)

@@ -31,6 +31,14 @@ public class AmmoData : ScriptableObject
     public float hitscanRange = 50f;
     public LayerMask hitMask = ~0;
 
+    [Header("VFX")]
+    public GameObject muzzleEffect;
+    public GameObject trailEffect;
+    public GameObject impactEffect;
+    public float beamWidth = 0.12f;
+    public Color beamColor = new Color(1f, 0.35f, 0.12f, 0.9f);
+    public Color beamCoreColor = new Color(1f, 0.92f, 0.75f, 1f);
+
     public bool HasExplosion
     {
         get { return explosionRadius > 0f && explosionDamage > 0f; }

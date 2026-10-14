@@ -2037,10 +2037,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 120d0d39a4dccf949a5077c22ed2c097, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_Sheep
-  maxHP: 100
+  maxHP: 20
   currentHP: 0
-  moveSpeed: 7
+  moveSpeed: 13
   isSample: 0
+  destination: {fileID: 0}
+  waypointRadius: 1.8
+  arriveDistance: 2.2
+  turnSpeed: 8
+  waypointSkipTime: 2.5
   groundMask:
     serializedVersion: 2
     m_Bits: 0
@@ -2053,6 +2058,10 @@ MonoBehaviour:
   animator: {fileID: 7813483395373265383}
   renderer: {fileID: 6583838070748603911}
   rigidbody: {fileID: 2690547256486256024}
+  passFunds: 15
+  passScore: 10
+  friendlyFireFunds: 10
+  friendlyFireScore: 0
 --- !u!1 &5016556513771391837
 GameObject:
   m_ObjectHideFlags: 0

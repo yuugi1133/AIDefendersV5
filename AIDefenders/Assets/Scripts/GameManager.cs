@@ -9,15 +9,39 @@ public class GameManager : MonoBehaviour
     public float serverWaitTimeout = 180f;
 
     readonly List<PythonRuntime.TrainedModelInfo> trainedModels = new List<PythonRuntime.TrainedModelInfo>();
-    Vector2 modelListScroll;
     int selectedModelIndex = -1;
     bool selectingModel = true;
     bool waitingForServer;
     string statusMessage = "";
     System.Diagnostics.Process serverProcess;
+    PythonRuntime.TrainedModelInfo selectedModel;
     AIInputCapture[] captures;
     TurretPlatformPlacer turretPlacer;
-    bool previousDebugHud;
+
+    public bool IsModelPromptOpen
+    {
+        get { return selectingModel || waitingForServer; }
+    }
+
+    public bool IsWaitingForServer
+    {
+        get { return waitingForServer; }
+    }
+
+    public int SelectedModelIndex
+    {
+        get { return selectedModelIndex; }
+    }
+
+    public string StatusMessage
+    {
+        get { return statusMessage; }
+    }
+
+    public IReadOnlyList<PythonRuntime.TrainedModelInfo> TrainedModels
+    {
+        get { return trainedModels; }
+    }
 
     void Awake()
     {
@@ -25,7 +49,6 @@ public class GameManager : MonoBehaviour
             waveDirector = GetComponent<WaveDirector>();
         if (waveDirector != null)
         {
-            previousDebugHud = waveDirector.showDebugHud;
             waveDirector.autoStart = false;
             waveDirector.showDebugHud = false;
         }
@@ -54,93 +77,21 @@ public class GameManager : MonoBehaviour
         StopServerProcess();
     }
 
-    void RefreshTrainedModels()
+    public void RefreshTrainedModels()
     {
         PythonRuntime.ListTrainedModels(trainedModels);
         if (selectedModelIndex >= trainedModels.Count)
             selectedModelIndex = trainedModels.Count - 1;
     }
 
-    void OnGUI()
+    public void SelectModel(int index)
     {
-        if (!selectingModel && !waitingForServer)
+        if (index < 0 || index >= trainedModels.Count)
             return;
-
-        Rect box = new Rect(
-            (Screen.width - 520f) * 0.5f,
-            (Screen.height - 360f) * 0.5f,
-            520f,
-            360f
-        );
-
-        GUI.Box(box, waitingForServer ? "YOLO 서버 시작" : "YOLO 모델 선택");
-        GUILayout.BeginArea(new Rect(box.x + 16f, box.y + 28f, box.width - 32f, box.height - 36f));
-
-        if (waitingForServer)
-        {
-            GUILayout.Label("선택한 모델로 로컬 YOLO 서버를 실행하는 중입니다.");
-            GUILayout.Label("CMD 창에서 모델 로딩 로그를 확인할 수 있습니다.");
-            GUILayout.Space(8f);
-            GUILayout.Label(string.IsNullOrEmpty(statusMessage) ? "서버 응답을 기다리는 중..." : statusMessage);
-            GUILayout.FlexibleSpace();
-            GUILayout.Label("서버가 준비되면 게임이 시작됩니다.");
-            GUILayout.EndArea();
-            EatClicksOutside(box);
-            return;
-        }
-
-        GUILayout.Label("이 스테이지에서 사용할 학습 모델을 고르세요.");
-        GUILayout.Label("학습이 끝난 데이터셋(weights/best.pt 또는 last.pt)만 표시됩니다.");
-        GUILayout.Space(6f);
-
-        modelListScroll = GUILayout.BeginScrollView(modelListScroll, GUILayout.ExpandHeight(true));
-        if (trainedModels.Count == 0)
-            GUILayout.Label("학습된 모델이 없습니다. DatasetGeneratorScene에서 먼저 학습하세요.");
-
-        for (int i = 0; i < trainedModels.Count; i++)
-        {
-            PythonRuntime.TrainedModelInfo model = trainedModels[i];
-            string label = model.DatasetName + "  (" + model.WeightsFile + ")";
-            Color previous = GUI.backgroundColor;
-            if (i == selectedModelIndex)
-                GUI.backgroundColor = new Color(0.45f, 0.75f, 1f);
-            if (GUILayout.Button(label, GUILayout.Height(28f)))
-                selectedModelIndex = i;
-            GUI.backgroundColor = previous;
-        }
-        GUILayout.EndScrollView();
-
-        if (!string.IsNullOrEmpty(statusMessage))
-        {
-            Color previous = GUI.color;
-            GUI.color = new Color(1f, 0.45f, 0.4f);
-            GUILayout.Label(statusMessage);
-            GUI.color = previous;
-        }
-
-        GUILayout.BeginHorizontal();
-        bool canApply = selectedModelIndex >= 0 && selectedModelIndex < trainedModels.Count;
-        GUI.enabled = canApply;
-        if (GUILayout.Button("적용하고 서버 시작", GUILayout.Height(32f)))
-            ApplySelectedModel();
-        GUI.enabled = true;
-        if (GUILayout.Button("목록 새로고침", GUILayout.Height(32f)))
-            RefreshTrainedModels();
-        GUILayout.EndHorizontal();
-        GUILayout.EndArea();
-        EatClicksOutside(box);
+        selectedModelIndex = index;
     }
 
-    static void EatClicksOutside(Rect box)
-    {
-        Event current = Event.current;
-        if (current == null || !current.isMouse)
-            return;
-        if (!box.Contains(current.mousePosition))
-            current.Use();
-    }
-
-    void ApplySelectedModel()
+    public void ApplySelectedModel()
     {
         if (selectedModelIndex < 0 || selectedModelIndex >= trainedModels.Count)
         {
@@ -149,6 +100,7 @@ public class GameManager : MonoBehaviour
         }
 
         PythonRuntime.TrainedModelInfo model = trainedModels[selectedModelIndex];
+        selectedModel = model;
         System.Diagnostics.Process process;
         string error;
         if (!PythonRuntime.TryStartYoloServer(model.WeightsPath, out process, out error))
@@ -209,6 +161,8 @@ public class GameManager : MonoBehaviour
         waitingForServer = false;
         statusMessage = "";
 
+        ApplyClassMapFromSelectedModel();
+
         for (int i = 0; i < captures.Length; i++)
         {
             if (captures[i] != null)
@@ -219,10 +173,37 @@ public class GameManager : MonoBehaviour
             turretPlacer.enabled = true;
 
         if (waveDirector != null)
-        {
-            waveDirector.showDebugHud = previousDebugHud;
             waveDirector.BeginStage();
+    }
+
+    void ApplyClassMapFromSelectedModel()
+    {
+        if (selectedModel == null)
+            return;
+
+        PythonRuntime.YoloClassMap map;
+        string error;
+        if (!PythonRuntime.TryLoadYoloClassMap(selectedModel.DatasetFolder, out map, out error))
+        {
+            Debug.LogWarning("YOLO 피아식별 맵을 읽지 못했습니다. " + error);
+            return;
         }
+
+        CCTVController[] controllers = FindObjectsByType<CCTVController>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None
+        );
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            if (controllers[i] != null)
+                controllers[i].ApplyYoloClassMap(map);
+        }
+
+        Debug.Log(
+            "YOLO 피아식별: 적 " + map.EnemyClassIds.Count +
+            " / 아군 " + map.FriendlyClassIds.Count +
+            " (" + selectedModel.DatasetName + ")"
+        );
     }
 
     void StopServerProcess()

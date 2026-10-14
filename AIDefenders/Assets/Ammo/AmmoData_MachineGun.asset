@@ -25,3 +25,9 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  muzzleEffect: {fileID: 100006, guid: c9eb9af70afad734091dff429aff1cb1, type: 3}
+  trailEffect: {fileID: 0}
+  impactEffect: {fileID: 100000, guid: 7d9314b53c08d5c4d93c6a450caf5bf6, type: 3}
+  beamWidth: 0.12
+  beamColor: {r: 1, g: 0.35, b: 0.12, a: 0.9}
+  beamCoreColor: {r: 1, g: 0.92, b: 0.75, a: 1}

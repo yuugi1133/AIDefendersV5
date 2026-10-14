@@ -1,5 +1,5 @@
 using UnityEngine;
 
-public class Target_Bear : Target_Base
+public class Target_Bear : Target_Enemy
 {
 }

@@ -1,5 +1,5 @@
 using UnityEngine;
 
-public class Target_Sheep : Target_Base
+public class Target_Sheep : Target_Friendly
 {
 }

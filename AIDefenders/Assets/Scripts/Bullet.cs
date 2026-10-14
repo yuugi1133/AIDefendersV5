@@ -1,24 +1,10 @@
 using UnityEngine;
 
-public class Bullet : MonoBehaviour
+public class Bullet : Projectile_Base
 {
     AmmoData ammo;
-    Vector3 velocity;
-    float gravity;
-    float damage;
-    float lifetime = 5f;
     Transform homingTarget;
     float homingTurnRate;
-    float age;
-    bool exploded;
-
-    void Start()
-    {
-        Physics.IgnoreLayerCollision(
-            LayerMask.NameToLayer("Bullet"),
-            LayerMask.NameToLayer("Turret")
-        );
-    }
 
     public void Init(
         Vector3 initialVelocity,
@@ -29,84 +15,60 @@ public class Bullet : MonoBehaviour
         float turnRate = 0f,
         AmmoData ammoData = null)
     {
-        velocity = initialVelocity;
-        gravity = gravityValue;
-        damage = initialDamage;
-        lifetime = life > 0f ? life : 5f;
+        ammo = ammoData;
         homingTarget = target;
         homingTurnRate = turnRate;
-        ammo = ammoData;
-        age = 0f;
-        exploded = false;
-
-        Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-            rb.useGravity = false;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
-
-        foreach (Collider col in GetComponents<Collider>())
-            col.isTrigger = true;
+        Launch(initialVelocity, gravityValue, life, initialDamage);
     }
 
-    void OnTriggerEnter(Collider other)
+    protected override void TickHoming(float deltaTime)
     {
-        if (other.GetComponentInParent<Bullet>() != null)
+        if (homingTarget == null || homingTurnRate <= 0f)
             return;
 
-        Target_Base direct = other.GetComponentInParent<Target_Base>();
-        Vector3 point = other.ClosestPoint(transform.position);
-        Explode(point, direct);
+        Vector3 aim = homingTarget.position;
+        Target_Base body = homingTarget.GetComponentInParent<Target_Base>();
+        if (body != null)
+            aim = body.GetAimPoint(transform.position);
+
+        Vector3 toTarget = (aim - transform.position).normalized;
+        float speed = velocity.magnitude;
+        if (speed <= 0.01f)
+            return;
+
+        Vector3 newDir = Vector3.RotateTowards(
+            velocity.normalized,
+            toTarget,
+            homingTurnRate * Mathf.Deg2Rad * deltaTime,
+            0f
+        );
+        velocity = newDir * speed;
     }
 
-    void Explode(Vector3 point, Target_Base directHit)
+    protected override void OnHitTarget(Target_Base target, Vector3 point)
     {
-        if (exploded)
-            return;
-
-        exploded = true;
-
-        if (directHit != null && !directHit.isDead)
-            directHit.TakeDamage(damage);
-
+        base.OnHitTarget(target, point);
         if (ammo != null)
-            ammo.ApplyExplosion(point, directHit);
-
-        Destroy(gameObject);
+        {
+            ammo.ApplyExplosion(point, target);
+            CombatVfx.PlayImpact(ammo.impactEffect, point, Vector3.up);
+        }
     }
 
-    void Update()
+    protected override void OnHitWorld(Vector3 point)
     {
-        age += Time.deltaTime;
-        if (age >= lifetime)
-        {
-            Explode(transform.position, null);
+        if (ammo == null)
             return;
-        }
+        ammo.ApplyExplosion(point, null);
+        CombatVfx.PlayImpact(ammo.impactEffect, point, Vector3.up);
+    }
 
-        if (homingTarget != null && homingTurnRate > 0f)
-        {
-            Vector3 toTarget = (homingTarget.position - transform.position).normalized;
-            float speed = velocity.magnitude;
-            if (speed > 0.01f)
-            {
-                Vector3 newDir = Vector3.RotateTowards(
-                    velocity.normalized,
-                    toTarget,
-                    homingTurnRate * Mathf.Deg2Rad * Time.deltaTime,
-                    0f
-                );
-                velocity = newDir * speed;
-            }
-        }
-
-        velocity += Vector3.down * gravity * Time.deltaTime;
-        transform.position += velocity * Time.deltaTime;
-
-        if (velocity.sqrMagnitude > 0.0001f)
-            transform.rotation = Quaternion.LookRotation(velocity);
+    protected override void OnExpired()
+    {
+        if (ammo == null)
+            return;
+        ammo.ApplyExplosion(transform.position, null);
+        if (ammo.HasExplosion)
+            CombatVfx.PlayImpact(ammo.impactEffect, transform.position, Vector3.up);
     }
 }

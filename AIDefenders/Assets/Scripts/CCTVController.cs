@@ -12,16 +12,18 @@ public class CCTVController : MonoBehaviour
     public TurretController[] turrets;
 
     [Header("YOLO Track")]
-    public int enemyClassId = 0;
     public float minConfidence = 0.3f;
     public List<YoloSighting> enemies = new List<YoloSighting>();
     public List<YoloSighting> friendlies = new List<YoloSighting>();
+
+    PythonRuntime.YoloClassMap classMap;
 
     class YoloTrack
     {
         public Target_Base target;
         public bool asEnemy;
         public float confidence;
+        public bool locked;
         public YoloTargetMarker marker;
     }
 
@@ -31,6 +33,14 @@ public class CCTVController : MonoBehaviour
     {
         if (aiInput != null)
             aiInput.OnDetectionReceived += HandleDetections;
+    }
+
+    public void ApplyYoloClassMap(PythonRuntime.YoloClassMap map)
+    {
+        classMap = map;
+        tracks.Clear();
+        enemies.Clear();
+        friendlies.Clear();
     }
 
     public void RegisterTurret(TurretController turret)
@@ -88,6 +98,25 @@ public class CCTVController : MonoBehaviour
         return true;
     }
 
+    public void ForceIdentify(Target_Base target, bool asEnemy)
+    {
+        if (target == null || target.isDead || target.isSample)
+            return;
+
+        YoloTrack track;
+        if (!tracks.TryGetValue(target, out track))
+        {
+            track = new YoloTrack { target = target };
+            tracks[target] = track;
+        }
+
+        track.asEnemy = asEnemy;
+        track.confidence = 1f;
+        track.locked = true;
+        EnsureMarker(track);
+        RebuildLists();
+    }
+
     void OnDestroy()
     {
         if (aiInput != null)
@@ -98,75 +127,6 @@ public class CCTVController : MonoBehaviour
     {
         PruneDeadTracks();
         RebuildLists();
-        CommandTurrets();
-    }
-
-    //포탑별로 YOLO가 적이라고 본 대상 중 사거리 안 가장 가까운 대상 찾기
-    Transform FindClosestIdentifiedEnemy(TurretController turret)
-    {
-        float closestDist = Mathf.Infinity;
-        Transform closest = null;
-
-        foreach (YoloSighting sighting in enemies)
-        {
-            if (sighting == null || sighting.target == null || sighting.target.isDead)
-                continue;
-
-            float dist = Vector3.Distance(
-                turret.transform.position,
-                sighting.target.transform.position
-            );
-
-            if (dist <= turret.range && dist < closestDist)
-            {
-                closestDist = dist;
-                closest = sighting.target.transform;
-            }
-        }
-
-        return closest;
-    }
-
-    // 포탑별로 대상 사격을 위한 예측 조준 위치를 계산 후 반환 
-    Vector3 CalculateInterceptPoint(TurretController turret, Transform target)
-    {
-        Rigidbody rb = target.GetComponentInParent<Rigidbody>();
-
-        Vector3 targetPos = target.position;
-        Vector3 targetVel = rb != null ? rb.linearVelocity : Vector3.zero;
-
-        Vector3 turretPos = turret.firePoint.position;
-
-        if (turret.weapon == null || !turret.weapon.UsesProjectileLead)
-            return targetPos;
-
-        float speed = turret.weapon.GetMuzzleSpeed();
-        if (speed <= 0.01f)
-            return targetPos;
-
-        Vector3 dir = targetPos - turretPos;
-
-        float a = Vector3.Dot(targetVel, targetVel) - speed * speed;
-        float b = 2f * Vector3.Dot(dir, targetVel);
-        float c = Vector3.Dot(dir, dir);
-
-        float discriminant = b * b - 4 * a * c;
-
-        if (discriminant < 0)
-            return targetPos;
-
-        float t1 = (-b + Mathf.Sqrt(discriminant)) / (2 * a);
-        float t2 = (-b - Mathf.Sqrt(discriminant)) / (2 * a);
-
-        float t = Mathf.Min(t1, t2);
-
-        if (t < 0)
-            t = Mathf.Max(t1, t2);
-
-        if (t < 0)
-            return targetPos;
-
-        return targetPos + targetVel * t;
     }
 
     bool TryFindTargetAlongRay(Ray ray, out Target_Base targetbase, out Transform target)
@@ -246,7 +206,10 @@ public class CCTVController : MonoBehaviour
             if (!TryFindTargetAlongRay(ray, out Target_Base targetbase, out Transform target))
                 continue;
 
-            bool asEnemy = detection.class_id == enemyClassId;
+            bool asEnemy;
+            if (classMap == null || !classMap.TryIsEnemy(detection.class_id, out asEnemy))
+                continue;
+
             UpsertTrack(targetbase, asEnemy, detection.confidence);
         }
 
@@ -258,7 +221,7 @@ public class CCTVController : MonoBehaviour
     {
         if (tracks.TryGetValue(target, out YoloTrack track))
         {
-            if (confidence <= track.confidence)
+            if (track.locked || confidence <= track.confidence)
                 return;
         }
         else
@@ -340,28 +303,4 @@ public class CCTVController : MonoBehaviour
         }
     }
 
-    void CommandTurrets()
-    {
-        if (turrets == null)
-            return;
-
-        foreach (TurretController turret in turrets)
-        {
-            if (turret == null || turret.firePoint == null)
-                continue;
-
-            Transform target = FindClosestIdentifiedEnemy(turret);
-            if (target == null)
-                continue;
-
-            Vector3 aimPoint = CalculateInterceptPoint(turret, target);
-            turret.SetTarget(target, aimPoint);
-
-            Debug.DrawLine(
-                turret.transform.position,
-                aimPoint,
-                Color.green
-            );
-        }
-    }
 }

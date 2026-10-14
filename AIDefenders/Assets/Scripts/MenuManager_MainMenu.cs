@@ -1,8 +1,21 @@
+using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+[System.Serializable]
+public class CampaignStageEntry
+{
+    public string displayName = "Stage";
+    public string sceneName;
+    public string description;
+}
 
 public class MenuManager_MainMenu : MonoBehaviour
 {
+    public CampaignStageEntry[] campaignStages;
+
+    GameObject mainMenuPanel;
+    GameObject campaignPanel;
     bool showPythonMissingDialog;
     bool showVenvDialog;
     bool showSetupProgress;
@@ -15,6 +28,9 @@ public class MenuManager_MainMenu : MonoBehaviour
 
     void Start()
     {
+        EnsureDefaultStages();
+        ApplyMainMenuFonts();
+        BuildCampaignPanel();
         CheckPythonEnvironment();
     }
 
@@ -230,9 +246,178 @@ public class MenuManager_MainMenu : MonoBehaviour
         GUILayout.Label("설치가 실패하면 CMD 창이 멈추고 에러가 표시됩니다.");
     }
 
+    public void OpenCampaign()
+    {
+        if (campaignPanel == null)
+            BuildCampaignPanel();
+
+        if (mainMenuPanel != null)
+            mainMenuPanel.SetActive(false);
+        if (campaignPanel != null)
+        {
+            campaignPanel.transform.SetAsLastSibling();
+            campaignPanel.SetActive(true);
+        }
+    }
+
+    public void CloseCampaign()
+    {
+        if (campaignPanel != null)
+            campaignPanel.SetActive(false);
+        if (mainMenuPanel != null)
+            mainMenuPanel.SetActive(true);
+    }
+
     public void LoadScene(string sceneName)
     {
-        SceneManager.LoadScene(sceneName);
+        SceneLoader.Load(sceneName);
+    }
+
+    void EnsureDefaultStages()
+    {
+        if (campaignStages != null && campaignStages.Length > 0)
+            return;
+
+        campaignStages = new[]
+        {
+            new CampaignStageEntry
+            {
+                displayName = "Grassfield 1",
+                sceneName = "Grassfield_1",
+                description = "초원 지대"
+            }
+        };
+    }
+
+    void BuildCampaignPanel()
+    {
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas == null)
+            canvas = FindFirstObjectByType<Canvas>();
+        if (canvas == null)
+            return;
+
+        Transform canvasRoot = canvas.transform;
+        Transform existingMain = canvasRoot.Find("Panel");
+        if (existingMain != null)
+            mainMenuPanel = existingMain.gameObject;
+
+        Transform existingCampaign = canvasRoot.Find("Panel_Campaign");
+        if (existingCampaign != null)
+            Destroy(existingCampaign.gameObject);
+
+        campaignPanel = new GameObject("Panel_Campaign");
+        RectTransform panelRt = campaignPanel.AddComponent<RectTransform>();
+        panelRt.SetParent(canvasRoot, false);
+        UiFont.Stretch(panelRt);
+        campaignPanel.SetActive(false);
+
+        Image dim = UiFont.AddImage(panelRt, "Dim", new Color(0.05f, 0.06f, 0.08f, 0.72f));
+        UiFont.Stretch(dim.rectTransform);
+
+        Image card = UiFont.AddImage(panelRt, "Card", new Color(0.16f, 0.18f, 0.22f, 0.96f));
+        RectTransform cardRt = card.rectTransform;
+        cardRt.anchorMin = new Vector2(0.5f, 0.5f);
+        cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+        cardRt.pivot = new Vector2(0.5f, 0.5f);
+        cardRt.sizeDelta = new Vector2(720f, 540f);
+        cardRt.anchoredPosition = Vector2.zero;
+
+        Text title = UiFont.AddText(cardRt, "Title", "스테이지 선택", 36, TextAnchor.MiddleLeft, Color.white, UiType.Title);
+        title.rectTransform.anchorMin = new Vector2(0f, 1f);
+        title.rectTransform.anchorMax = new Vector2(1f, 1f);
+        title.rectTransform.pivot = new Vector2(0.5f, 1f);
+        title.rectTransform.anchoredPosition = new Vector2(0f, -20f);
+        title.rectTransform.sizeDelta = new Vector2(-48f, 56f);
+
+        GameObject list = new GameObject("StageList");
+        RectTransform listRt = list.AddComponent<RectTransform>();
+        listRt.SetParent(cardRt, false);
+        listRt.anchorMin = new Vector2(0f, 0f);
+        listRt.anchorMax = new Vector2(1f, 1f);
+        listRt.offsetMin = new Vector2(28f, 96f);
+        listRt.offsetMax = new Vector2(-28f, -84f);
+
+        if (campaignStages != null)
+        {
+            for (int i = 0; i < campaignStages.Length; i++)
+                CreateStageButton(listRt, campaignStages[i], i);
+        }
+
+        Button back = CreateTextButton(cardRt, "Button_Back", "뒤로", new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(180f, 48f));
+        back.onClick.AddListener(CloseCampaign);
+    }
+
+    void CreateStageButton(Transform parent, CampaignStageEntry stage, int index)
+    {
+        if (stage == null)
+            return;
+
+        Image image = UiFont.AddImage(parent, string.IsNullOrEmpty(stage.displayName) ? "Stage" : stage.displayName, Color.white);
+        RectTransform rt = image.rectTransform;
+        rt.anchorMin = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(0.5f, 1f);
+        rt.sizeDelta = new Vector2(0f, 96f);
+        rt.anchoredPosition = new Vector2(0f, -index * 112f);
+
+        Button button = image.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+        string sceneName = stage.sceneName;
+        button.onClick.AddListener(() => LoadScene(sceneName));
+
+        Text name = UiFont.AddText(rt, "Name", stage.displayName, 28, TextAnchor.MiddleLeft, new Color(0.12f, 0.13f, 0.15f, 1f), UiType.TitleMedium);
+        name.rectTransform.anchorMin = new Vector2(0f, 0.45f);
+        name.rectTransform.anchorMax = new Vector2(1f, 1f);
+        name.rectTransform.offsetMin = new Vector2(24f, 0f);
+        name.rectTransform.offsetMax = new Vector2(-24f, -8f);
+
+        string desc = string.IsNullOrWhiteSpace(stage.description) ? stage.sceneName : stage.description;
+        Text detail = UiFont.AddText(rt, "Detail", desc, 20, TextAnchor.UpperLeft, new Color(0.32f, 0.34f, 0.38f, 1f), UiType.Body);
+        detail.rectTransform.anchorMin = new Vector2(0f, 0f);
+        detail.rectTransform.anchorMax = new Vector2(1f, 0.5f);
+        detail.rectTransform.offsetMin = new Vector2(24f, 12f);
+        detail.rectTransform.offsetMax = new Vector2(-24f, 0f);
+    }
+
+    static Button CreateTextButton(Transform parent, string name, string label, Vector2 anchor, Vector2 pos, Vector2 size)
+    {
+        Image image = UiFont.AddImage(parent, name, Color.white);
+        RectTransform rt = image.rectTransform;
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = pos;
+        rt.sizeDelta = size;
+
+        Button button = image.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+
+        Text text = UiFont.AddText(rt, "Text", label, 24, TextAnchor.MiddleCenter, new Color(0.12f, 0.13f, 0.15f, 1f), UiType.BodyMedium);
+        UiFont.Stretch(text.rectTransform);
+        return button;
+    }
+
+    void ApplyMainMenuFonts()
+    {
+        Canvas canvas = FindFirstObjectByType<Canvas>();
+        if (canvas == null)
+            return;
+
+        TMP_Text[] texts = canvas.GetComponentsInChildren<TMP_Text>(true);
+        for (int i = 0; i < texts.Length; i++)
+        {
+            TMP_Text text = texts[i];
+            if (text == null)
+                continue;
+
+            string value = text.text;
+            bool title = !string.IsNullOrEmpty(value) &&
+                (value.IndexOf("Campaign", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 value.IndexOf("AI Den", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 value.IndexOf("AI Def", System.StringComparison.OrdinalIgnoreCase) >= 0);
+            UiFont.Apply(text, title ? UiType.Title : UiType.BodyMedium);
+        }
     }
 
     public void QuitGame()

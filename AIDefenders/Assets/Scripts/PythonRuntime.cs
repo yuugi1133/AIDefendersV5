@@ -183,8 +183,34 @@ public static class PythonRuntime
     public class TrainedModelInfo
     {
         public string DatasetName = "";
+        public string DatasetFolder = "";
         public string WeightsPath = "";
         public string WeightsFile = "";
+    }
+
+    public class YoloClassMap
+    {
+        public readonly Dictionary<int, string> Names = new Dictionary<int, string>();
+        public readonly List<int> EnemyClassIds = new List<int>();
+        public readonly List<int> FriendlyClassIds = new List<int>();
+
+        public bool TryIsEnemy(int classId, out bool asEnemy)
+        {
+            asEnemy = false;
+            if (EnemyClassIds.Contains(classId))
+            {
+                asEnemy = true;
+                return true;
+            }
+
+            if (FriendlyClassIds.Contains(classId))
+            {
+                asEnemy = false;
+                return true;
+            }
+
+            return false;
+        }
     }
 
     public static string GetPythonServerDir()
@@ -222,6 +248,7 @@ public static class PythonRuntime
 
             var info = new TrainedModelInfo();
             info.DatasetName = Path.GetFileName(dirs[i]);
+            info.DatasetFolder = dirs[i];
             info.WeightsPath = weightsPath;
             info.WeightsFile = Path.GetFileName(weightsPath);
             results.Add(info);
@@ -243,6 +270,115 @@ public static class PythonRuntime
             return Path.GetFullPath(last);
 
         return "";
+    }
+
+    public static bool TryLoadYoloClassMap(string datasetFolder, out YoloClassMap map, out string error)
+    {
+        map = new YoloClassMap();
+        error = "";
+
+        if (string.IsNullOrEmpty(datasetFolder) || !Directory.Exists(datasetFolder))
+        {
+            error = "데이터셋 폴더를 찾을 수 없습니다.";
+            return false;
+        }
+
+        string yamlPath = Path.Combine(datasetFolder, "dataset.yaml");
+        if (!File.Exists(yamlPath))
+        {
+            error = "dataset.yaml을 찾을 수 없습니다:\n" + yamlPath;
+            return false;
+        }
+
+        string[] lines;
+        try
+        {
+            lines = File.ReadAllLines(yamlPath);
+        }
+        catch (Exception e)
+        {
+            error = "dataset.yaml을 읽지 못했습니다.\n" + e.Message;
+            return false;
+        }
+
+        bool inNames = false;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string raw = lines[i];
+            if (string.IsNullOrWhiteSpace(raw))
+                continue;
+
+            string trimmed = raw.Trim();
+            if (trimmed.StartsWith("#"))
+                continue;
+
+            if (!inNames)
+            {
+                if (trimmed.StartsWith("names:", StringComparison.OrdinalIgnoreCase))
+                    inNames = true;
+                continue;
+            }
+
+            if (!char.IsWhiteSpace(raw[0]) && trimmed.IndexOf(':') >= 0 && !char.IsDigit(trimmed[0]) && trimmed[0] != '-')
+                break;
+
+            int classId;
+            string label;
+            if (!TryParseYamlNameLine(trimmed, out classId, out label))
+                continue;
+
+            if (map.Names.ContainsKey(classId))
+                continue;
+
+            map.Names[classId] = label;
+            if (label.StartsWith("Target_Enemy_", StringComparison.OrdinalIgnoreCase))
+                map.EnemyClassIds.Add(classId);
+            else if (label.StartsWith("Target_Friendly_", StringComparison.OrdinalIgnoreCase))
+                map.FriendlyClassIds.Add(classId);
+        }
+
+        if (map.Names.Count == 0)
+        {
+            error = "dataset.yaml에서 클래스 이름을 찾지 못했습니다:\n" + yamlPath;
+            return false;
+        }
+
+        return true;
+    }
+
+    static bool TryParseYamlNameLine(string trimmed, out int classId, out string label)
+    {
+        classId = 0;
+        label = "";
+        if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#"))
+            return false;
+
+        int colon = trimmed.IndexOf(':');
+        if (colon <= 0)
+            return false;
+
+        string idText = trimmed.Substring(0, colon).Trim();
+        if (!int.TryParse(idText, out classId))
+            return false;
+
+        label = StripYamlQuotes(trimmed.Substring(colon + 1).Trim());
+        return !string.IsNullOrEmpty(label);
+    }
+
+    static string StripYamlQuotes(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "";
+
+        if (value.Length >= 2)
+        {
+            char first = value[0];
+            char last = value[value.Length - 1];
+            if ((first == '"' && last == '"') || (first == '\'' && last == '\''))
+                return value.Substring(1, value.Length - 2);
+        }
+
+        return value;
     }
 
     public static bool TryStartYoloServer(string weightsPath, out Process process, out string error)

@@ -5,17 +5,68 @@ public class WeaponSystem : MonoBehaviour
 {
     public AmmoData ammo;
 
-    public float fireDelay = 0.5f;  //?????
-    public int maxAmmo = 10;        //??? ?????
-    public float reloadTime = 2f;   //?????? ????
+    public float fireDelay = 0.5f;
+    public int maxAmmo = 10;
+    public float reloadTime = 2f;
+    [Tooltip("발사 방향이 조준 축에서 어긋날 수 있는 최대 각도(도). 0이면 집탄.")]
+    public float spreadAngle = 0f;
 
     int currentAmmo;
     bool isReloading = false;
     float lastFireTime = 0f;
+    float damageScale = 1f;
+    GameObject beamRoot;
+    LineRenderer beamGlow;
+    LineRenderer beamCore;
+    float lastBeamTime;
+
+    public int CurrentAmmo
+    {
+        get { return currentAmmo; }
+    }
+
+    public int MagazineSize
+    {
+        get { return maxAmmo; }
+    }
+
+    public bool IsReloading
+    {
+        get { return isReloading; }
+    }
+
+    public string AmmoLabel
+    {
+        get
+        {
+            if (ammo == null)
+                return "없음";
+            return string.IsNullOrWhiteSpace(ammo.name) ? "탄환" : ammo.name;
+        }
+    }
 
     void Start()
     {
         currentAmmo = maxAmmo;
+    }
+
+    public void ApplyTierStats(float delay, int magazine, float reload, float scale)
+    {
+        fireDelay = Mathf.Max(0.01f, delay);
+        maxAmmo = Mathf.Max(1, magazine);
+        reloadTime = Mathf.Max(0.01f, reload);
+        damageScale = Mathf.Max(0.01f, scale);
+        if (currentAmmo > maxAmmo)
+            currentAmmo = maxAmmo;
+        if (!isReloading && currentAmmo <= 0)
+            currentAmmo = maxAmmo;
+    }
+
+    float GetShotDamage()
+    {
+        if (ammo == null)
+            return 0f;
+        return ammo.damage * damageScale;
     }
 
     public bool UsesProjectileLead
@@ -43,19 +94,31 @@ public class WeaponSystem : MonoBehaviour
         if (ammo == null) return false;
         if (isReloading) return false;
         if (Time.time - lastFireTime < fireDelay) return false;
-        if (currentAmmo <= 0) return false;
+        if (ammo.fireMode != WeaponFireMode.Beam && currentAmmo <= 0) return false;
 
         return true;
     }
 
     public void Fire(Vector3 origin, Vector3 direction, Transform target = null)
     {
-        if (!CanFire())
+        if (ammo == null)
             return;
 
         Vector3 dir = direction.sqrMagnitude > 0.0001f
             ? direction.normalized
             : transform.forward;
+        dir = ApplySpread(dir);
+
+        if (ammo.fireMode == WeaponFireMode.Beam)
+        {
+            FireBeam(origin, dir);
+            return;
+        }
+
+        if (!CanFire())
+            return;
+
+        CombatVfx.PlayMuzzle(ammo.muzzleEffect, origin, dir);
 
         switch (ammo.fireMode)
         {
@@ -66,13 +129,42 @@ public class WeaponSystem : MonoBehaviour
                 FireProjectile(origin, dir, target);
                 break;
             case WeaponFireMode.Hitscan:
-            case WeaponFireMode.Beam:
                 FireHitscan(origin, dir);
                 break;
         }
 
         lastFireTime = Time.time;
         ConsumeAmmo();
+    }
+
+    void LateUpdate()
+    {
+        if (beamRoot == null)
+            return;
+
+        if (Time.time - lastBeamTime > 0.08f)
+            SetBeamVisible(false);
+    }
+
+    void OnDestroy()
+    {
+        if (beamRoot != null)
+            Destroy(beamRoot);
+    }
+
+    Vector3 ApplySpread(Vector3 direction)
+    {
+        if (spreadAngle <= 0.01f)
+            return direction;
+
+        Vector3 right = Vector3.Cross(direction, Vector3.up);
+        if (right.sqrMagnitude < 0.0001f)
+            right = Vector3.Cross(direction, Vector3.right);
+        right.Normalize();
+        Vector3 up = Vector3.Cross(right, direction);
+
+        Vector2 offset = Random.insideUnitCircle * spreadAngle;
+        return (Quaternion.AngleAxis(offset.x, up) * Quaternion.AngleAxis(offset.y, right) * direction).normalized;
     }
 
     void FireProjectile(Vector3 origin, Vector3 direction, Transform homingTarget)
@@ -100,12 +192,14 @@ public class WeaponSystem : MonoBehaviour
         bullet.Init(
             velocity,
             ammo.gravity,
-            ammo.damage,
+            GetShotDamage(),
             ammo.lifetime,
             homing ? homingTarget : null,
             homing ? ammo.homingTurnRate : 0f,
             ammo
         );
+
+        CombatVfx.AttachTrail(ammo.trailEffect, bulletObj.transform);
     }
 
     void FireHitscan(Vector3 origin, Vector3 direction)
@@ -116,15 +210,117 @@ public class WeaponSystem : MonoBehaviour
         {
             Target_Base target = hit.collider.GetComponentInParent<Target_Base>();
             if (target != null)
-                target.TakeDamage(ammo.damage);
+                target.TakeDamage(GetShotDamage());
 
             ammo.ApplyExplosion(hit.point, null);
+            CombatVfx.PlayImpact(ammo.impactEffect, hit.point, hit.normal);
             Debug.DrawLine(origin, hit.point, Color.cyan, 0.1f);
         }
         else
         {
             Debug.DrawRay(origin, direction * range, Color.cyan, 0.1f);
         }
+    }
+
+    void FireBeam(Vector3 origin, Vector3 direction)
+    {
+        float range = ammo.hitscanRange > 0f ? ammo.hitscanRange : 50f;
+        Vector3 end = origin + direction * range;
+        Vector3 impactNormal = -direction;
+        bool hitSomething = false;
+
+        if (Physics.Raycast(origin, direction, out RaycastHit hit, range, ammo.hitMask))
+        {
+            end = hit.point;
+            impactNormal = hit.normal;
+            hitSomething = true;
+
+            if (CanFire())
+            {
+                Target_Base target = hit.collider.GetComponentInParent<Target_Base>();
+                if (target != null)
+                    target.TakeDamage(GetShotDamage());
+
+                ammo.ApplyExplosion(hit.point, null);
+                CombatVfx.PlayBeamImpact(ammo.impactEffect, hit.point, impactNormal);
+                lastFireTime = Time.time;
+            }
+        }
+
+        ShowBeam(origin, end);
+        lastBeamTime = Time.time;
+        if (!hitSomething)
+            Debug.DrawRay(origin, direction * range, Color.red, 0.05f);
+    }
+
+    void ShowBeam(Vector3 start, Vector3 end)
+    {
+        EnsureBeam();
+        SetBeamVisible(true);
+        beamGlow.SetPosition(0, start);
+        beamGlow.SetPosition(1, end);
+        beamCore.SetPosition(0, start);
+        beamCore.SetPosition(1, end);
+
+        float width = ammo.beamWidth > 0.01f ? ammo.beamWidth : 0.12f;
+        beamGlow.startWidth = width;
+        beamGlow.endWidth = width * 0.65f;
+        beamCore.startWidth = width * 0.35f;
+        beamCore.endWidth = width * 0.18f;
+        ApplyBeamColors();
+    }
+
+    void EnsureBeam()
+    {
+        if (beamRoot != null)
+            return;
+
+        beamRoot = new GameObject("TurretBeam");
+        beamRoot.transform.SetParent(transform, false);
+        beamGlow = CreateBeamLine(beamRoot.transform, "Glow", 8);
+        beamCore = CreateBeamLine(beamRoot.transform, "Core", 12);
+    }
+
+    LineRenderer CreateBeamLine(Transform parent, string name, int caps)
+    {
+        GameObject go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        LineRenderer line = go.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.positionCount = 2;
+        line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        line.receiveShadows = false;
+        line.numCapVertices = caps;
+        line.alignment = LineAlignment.View;
+        line.textureMode = LineTextureMode.Stretch;
+        line.material = CreateBeamMaterial();
+        return line;
+    }
+
+    static Material CreateBeamMaterial()
+    {
+        Shader shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null)
+            shader = Shader.Find("Hidden/InternalErrorShader");
+        return new Material(shader);
+    }
+
+    void ApplyBeamColors()
+    {
+        Color glow = ammo != null ? ammo.beamColor : new Color(1f, 0.35f, 0.12f, 0.9f);
+        Color core = ammo != null ? ammo.beamCoreColor : Color.white;
+        beamGlow.startColor = glow;
+        beamGlow.endColor = glow;
+        beamCore.startColor = core;
+        beamCore.endColor = new Color(core.r, core.g, core.b, core.a * 0.65f);
+    }
+
+    void SetBeamVisible(bool visible)
+    {
+        if (beamRoot != null)
+            beamRoot.SetActive(visible);
     }
 
     void ConsumeAmmo()
