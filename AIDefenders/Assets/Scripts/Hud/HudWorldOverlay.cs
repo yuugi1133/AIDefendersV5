@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 public class HudWorldOverlay
 {
-    const float DamageLifetime = 0.85f;
+    const float DamageLifetime = 1.05f;
     const int MarkerPoolStart = 16;
     const int BlipPoolStart = 24;
     const int DamagePoolStart = 16;
@@ -45,10 +45,13 @@ public class HudWorldOverlay
     class DamageView
     {
         public Text text;
+        public Outline outline;
         public RectTransform rt;
         public Vector3 world;
         public float born;
         public float jitter;
+        public float lift;
+        public Color startColor;
         public bool active;
     }
 
@@ -66,11 +69,15 @@ public class HudWorldOverlay
             damages.Add(CreateDamage());
 
         HudFx.DamageShown += HandleDamage;
+        HudFx.FundsShown += HandleFunds;
+        HudFx.ScoreShown += HandleScore;
     }
 
     public void Dispose()
     {
         HudFx.DamageShown -= HandleDamage;
+        HudFx.FundsShown -= HandleFunds;
+        HudFx.ScoreShown -= HandleScore;
     }
 
     public void Tick()
@@ -227,25 +234,64 @@ public class HudWorldOverlay
                 continue;
 
             local.x += view.jitter;
-            local.y += t * 42f;
+            local.y += t * 56f + view.lift;
             view.rt.anchoredPosition = local;
-            view.text.color = Color.Lerp(
-                new Color(1f, 0.92f, 0.35f, 1f),
-                new Color(1f, 0.35f, 0.2f, 0f),
-                t
-            );
+            Color fill = view.startColor;
+            fill.a = 1f - t;
+            view.text.color = fill;
+            if (view.outline != null)
+            {
+                Color outline = Color.black;
+                outline.a = fill.a;
+                view.outline.effectColor = outline;
+            }
             view.text.gameObject.SetActive(true);
         }
     }
 
-    void HandleDamage(Vector3 world, float amount)
+    void HandleDamage(Vector3 world, float amount, float pierceDelta)
+    {
+        Color gray = new Color(0.72f, 0.74f, 0.78f, 1f);
+        if (pierceDelta <= 0f && amount < 0.01f)
+        {
+            SpawnPopup(world, "BLOCKED", gray, Random.Range(-18f, 18f), 0f);
+            return;
+        }
+
+        string label = amount >= 10f ? amount.ToString("0") : amount.ToString("0.#");
+        Color yellow = new Color(1f, 0.93f, 0.32f, 1f);
+        Color color = pierceDelta <= 0f || pierceDelta >= 0.5f ? yellow : gray;
+        SpawnPopup(world, label, color, Random.Range(-22f, 22f), 0f);
+    }
+
+    void HandleFunds(Vector3 world, int amount)
+    {
+        string label = amount > 0 ? "$+" + amount : "$" + amount;
+        Color color = amount >= 0
+            ? new Color(0.45f, 1f, 0.55f, 1f)
+            : new Color(1f, 0.42f, 0.38f, 1f);
+        SpawnPopup(world, label, color, Random.Range(-28f, -8f), 18f);
+    }
+
+    void HandleScore(Vector3 world, int amount)
+    {
+        string label = amount > 0 ? "+" + amount : amount.ToString();
+        SpawnPopup(world, label, new Color(1f, 0.96f, 0.55f, 1f), Random.Range(8f, 28f), 40f);
+    }
+
+    void SpawnPopup(Vector3 world, string label, Color color, float jitter, float lift)
     {
         DamageView view = GetDamage();
         view.world = world;
         view.born = Time.unscaledTime;
-        view.jitter = Random.Range(-18f, 18f);
+        view.jitter = jitter;
+        view.lift = lift;
+        view.startColor = color;
         view.active = true;
-        view.text.text = amount >= 10f ? amount.ToString("0") : amount.ToString("0.#");
+        view.text.text = label;
+        view.text.color = color;
+        if (view.outline != null)
+            view.outline.effectColor = Color.black;
         view.text.gameObject.SetActive(true);
         liveDamages.Add(view);
     }
@@ -406,15 +452,21 @@ public class HudWorldOverlay
 
     DamageView CreateDamage()
     {
-        Text text = UiFont.AddText(damageRoot, "Damage", "0", 20, TextAnchor.MiddleCenter, Color.white, UiType.BodyBold);
+        Text text = UiFont.AddText(damageRoot, "Damage", "0", 36, TextAnchor.MiddleCenter, Color.white, UiType.Title);
         text.raycastTarget = false;
         text.gameObject.SetActive(false);
         RectTransform rt = text.rectTransform;
         rt.anchorMin = new Vector2(0.5f, 0.5f);
         rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(80f, 32f);
-        return new DamageView { text = text, rt = rt };
+        rt.sizeDelta = new Vector2(220f, 56f);
+
+        Outline outline = text.gameObject.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2.5f, -2.5f);
+        outline.useGraphicAlpha = true;
+
+        return new DamageView { text = text, outline = outline, rt = rt };
     }
 
     Transform CreateLayer(string name)

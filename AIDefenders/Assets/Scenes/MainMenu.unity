@@ -958,6 +958,12 @@ MonoBehaviour:
   - displayName: Grassfield 1
     sceneName: Grassfield_1
     description: 초원 지대
+  - displayName: Grassfield 2
+    sceneName: Grassfield_2
+    description: 초원 지대
+  - displayName: Grassfield 3
+    sceneName: Grassfield_3
+    description: 초원 지대
 --- !u!4 &623362528
 Transform:
   m_ObjectHideFlags: 0

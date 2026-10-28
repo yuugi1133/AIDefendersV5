@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a1c9e4f2b5846d0a3e8c1f0b9d24680, type: 3}
+  m_Name: WolfVocal
+  m_EditorClassIdentifier: Assembly-CSharp::SfxEvent
+  clips:
+  - {fileID: 8300000, guid: 207ab97a72da95149a2f374767044b1a, type: 3}
+  - {fileID: 8300000, guid: f09c073c8962be744a584f7fc8e24c2a, type: 3}
+  - {fileID: 8300000, guid: ca3970130a9efb84cae3b9e61f2adf50, type: 3}
+  - {fileID: 8300000, guid: d55dcbd47d552744cb663c750311a0ab, type: 3}
+  - {fileID: 8300000, guid: 107a7089d01f1964393c68a14d51143e, type: 3}
+  volume: 0.7
+  pitch: {x: 0.94, y: 1.06}

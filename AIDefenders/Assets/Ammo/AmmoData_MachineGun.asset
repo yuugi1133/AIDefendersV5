@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: AmmoData_MachineGun
   m_EditorClassIdentifier: Assembly-CSharp::AmmoData
   fireMode: 0
-  damage: 55
-  bulletSpeed: 80
+  damage: 5
+  bulletSpeed: 70
   gravity: 0
   lifetime: 2.5
   bulletPrefab: {fileID: 3223724401015827084, guid: f8f58a808953ea449baefbc91f9b1958, type: 3}

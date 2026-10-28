@@ -10,6 +10,7 @@ public class CCTVSkill_IdentificationDart : CCTVActiveSkill
     public float dartGravity = 0f;
     public float dartLifetime = 5f;
     public float muzzleOffset = 1.6f;
+    public SfxEvent fireSfx;
 
     bool primed;
     CCTVSkillContext armedContext;
@@ -120,6 +121,7 @@ public class CCTVSkill_IdentificationDart : CCTVActiveSkill
             asEnemy,
             transform
         );
+        GameSfx.PlayWorld(fireSfx, origin);
 
         primed = false;
         armedContext = null;

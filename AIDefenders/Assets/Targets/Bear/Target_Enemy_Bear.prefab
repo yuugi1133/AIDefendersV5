@@ -125,12 +125,19 @@ MonoBehaviour:
   currentHP: 0
   moveSpeed: 5
   isSample: 0
+  scoreCoefficient: 10
+  armorValue: 2
   isDead: 0
   sinkSpeed: 1
   destroyDelay: 3
   animator: {fileID: 6732651187374356703}
   renderer: {fileID: 6576720895163708352}
   rigidbody: {fileID: 0}
+  footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e907, type: 2}
+  vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e908, type: 2}
+  death: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e909, type: 2}
+  footstepInterval: 0.55
+  vocalInterval: {x: 5, y: 13}
 --- !u!1 &123067631597614405
 GameObject:
   m_ObjectHideFlags: 0

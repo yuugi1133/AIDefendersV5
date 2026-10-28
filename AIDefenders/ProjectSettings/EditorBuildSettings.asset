@@ -12,6 +12,12 @@ EditorBuildSettings:
     path: Assets/Scenes/GameStages/GrassField/Grassfield_1.unity
     guid: ada20807e7a58db4d80f102c72d6df39
   - enabled: 1
+    path: Assets/Scenes/GameStages/GrassField/Grassfield_2.unity
+    guid: 81078904c57666140a631cb14584b507
+  - enabled: 1
+    path: Assets/Scenes/GameStages/GrassField/Grassfield_3.unity
+    guid: 73573fa0b7f0de54fa6c9c11581d184d
+  - enabled: 1
     path: Assets/Scenes/SampleScene.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
   - enabled: 1

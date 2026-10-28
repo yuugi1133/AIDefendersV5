@@ -13,12 +13,15 @@ public class Bullet : Projectile_Base
         float life = 5f,
         Transform target = null,
         float turnRate = 0f,
-        AmmoData ammoData = null)
+        AmmoData ammoData = null,
+        float armorPierceValue = 3f,
+        TurretController shooter = null)
     {
         ammo = ammoData;
         homingTarget = target;
         homingTurnRate = turnRate;
-        Launch(initialVelocity, gravityValue, life, initialDamage);
+        sourceTurret = shooter;
+        Launch(initialVelocity, gravityValue, life, initialDamage, null, armorPierceValue);
     }
 
     protected override void TickHoming(float deltaTime)
@@ -50,7 +53,7 @@ public class Bullet : Projectile_Base
         base.OnHitTarget(target, point);
         if (ammo != null)
         {
-            ammo.ApplyExplosion(point, target);
+            ammo.ApplyExplosion(point, target, armorPierce);
             CombatVfx.PlayImpact(ammo.impactEffect, point, Vector3.up);
         }
     }
@@ -59,7 +62,7 @@ public class Bullet : Projectile_Base
     {
         if (ammo == null)
             return;
-        ammo.ApplyExplosion(point, null);
+        ammo.ApplyExplosion(point, null, armorPierce);
         CombatVfx.PlayImpact(ammo.impactEffect, point, Vector3.up);
     }
 
@@ -67,7 +70,7 @@ public class Bullet : Projectile_Base
     {
         if (ammo == null)
             return;
-        ammo.ApplyExplosion(transform.position, null);
+        ammo.ApplyExplosion(transform.position, null, armorPierce);
         if (ammo.HasExplosion)
             CombatVfx.PlayImpact(ammo.impactEffect, transform.position, Vector3.up);
     }

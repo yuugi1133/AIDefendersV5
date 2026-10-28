@@ -2041,6 +2041,8 @@ MonoBehaviour:
   currentHP: 0
   moveSpeed: 13
   isSample: 0
+  scoreCoefficient: 10
+  armorValue: 0
   destination: {fileID: 0}
   waypointRadius: 1.8
   arriveDistance: 2.2
@@ -2058,10 +2060,13 @@ MonoBehaviour:
   animator: {fileID: 7813483395373265383}
   renderer: {fileID: 6583838070748603911}
   rigidbody: {fileID: 2690547256486256024}
+  footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e904, type: 2}
+  vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e905, type: 2}
+  death: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e906, type: 2}
+  footstepInterval: 0.28
+  vocalInterval: {x: 5, y: 12}
   passFunds: 15
-  passScore: 10
   friendlyFireFunds: 10
-  friendlyFireScore: 0
 --- !u!1 &5016556513771391837
 GameObject:
   m_ObjectHideFlags: 0

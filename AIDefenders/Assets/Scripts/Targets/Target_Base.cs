@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [RequireComponent(typeof(Rigidbody))]
 public class Target_Base : MonoBehaviour
@@ -9,8 +11,16 @@ public class Target_Base : MonoBehaviour
     public float maxHP = 100f;
     public float currentHP;
     public float moveSpeed = 3f;
+    [Tooltip("장갑 값(AV). 포탑 AP와 비교해 피해가 줄어듭니다.")]
+    public float armorValue = 0f;
 
     public bool isSample = false;
+
+    [Header("Score")]
+    [FormerlySerializedAs("killScore")]
+    [FormerlySerializedAs("passScore")]
+    [Tooltip("YOLO 신뢰도와 곱해 점수가 됩니다.")]
+    public float scoreCoefficient = 10f;
 
     public string HudLabel
     {
@@ -26,6 +36,8 @@ public class Target_Base : MonoBehaviour
                 return "사슴";
             if (this is Target_Chicken)
                 return "닭";
+            if (this is Target_Tiger)
+                return "호랑이";
             if (this is Target_Friendly)
                 return "아군";
             if (this is Target_Enemy)
@@ -73,7 +85,16 @@ public class Target_Base : MonoBehaviour
     public Renderer renderer;
     public Rigidbody rigidbody;
 
+    [Header("Sfx")]
+    public SfxEvent footstep;
+    public SfxEvent vocal;
+    public SfxEvent death;
+    public float footstepInterval = 0.38f;
+    public Vector2 vocalInterval = new Vector2(4f, 11f);
+
     readonly List<StatusEffect> statusEffects = new List<StatusEffect>();
+    float footstepTimer;
+    float vocalTimer;
 
     public IReadOnlyList<StatusEffect> StatusEffects
     {
@@ -92,14 +113,19 @@ public class Target_Base : MonoBehaviour
             animator.SetBool("Move", true);
 
         SnapToGround();
+        vocalTimer = RandomVocalWait();
     }
 
     void Update()
     {
-        if (isSample || isDead)
+        if (isSample)
+            return;
+
+        if (isDead)
             return;
 
         TickStatusEffects(Time.deltaTime);
+        TickSfx(Time.deltaTime);
     }
 
     protected virtual void FixedUpdate()
@@ -360,15 +386,26 @@ public class Target_Base : MonoBehaviour
         return mask;
     }
 
-    public virtual void TakeDamage(float damage)
+    TurretController lastAttacker;
+
+    public virtual void TakeDamage(float damage, float armorPierce = 3f, int bonusTrueDamage = 0, TurretController attacker = null)
     {
         if (isDead)
             return;
 
-        currentHP -= damage;
-        ShowDamageNumber(damage);
+        float pierceDelta = armorPierce - armorValue;
+        float applied = damage * Mathf.Clamp(pierceDelta, 0f, 1f);
+        float total = applied + Mathf.Max(0, bonusTrueDamage);
+        if (total > 0.0001f)
+        {
+            currentHP -= total;
+            if (attacker != null)
+                lastAttacker = attacker;
+        }
 
-        if (currentHP <= 0)
+        ShowDamageNumber(total, pierceDelta);
+
+        if (currentHP <= 0f)
             Die();
     }
 
@@ -479,21 +516,26 @@ public class Target_Base : MonoBehaviour
         return Mathf.Max(0f, speed);
     }
 
-    void ShowDamageNumber(float damage)
+    void ShowDamageNumber(float damage, float pierceDelta)
     {
-        if (isSample || damage <= 0.01f)
+        if (isSample)
             return;
 
+        HudFx.ShowDamage(GetPopupWorld(), damage, pierceDelta);
+    }
+
+    public Vector3 GetPopupWorld()
+    {
         Vector3 world = transform.position + Vector3.up * 1.4f;
         if (renderer != null)
             world = renderer.bounds.center + Vector3.up * (renderer.bounds.extents.y + 0.2f);
-
-        HudFx.ShowDamage(world, damage);
+        return world;
     }
 
     protected virtual void Die()
     {
         isDead = true;
+        TurretResearch.TryScrapAmmo(lastAttacker, this);
         ClearStatusEffects();
         DisableColliders();
 
@@ -501,6 +543,7 @@ public class Target_Base : MonoBehaviour
         rigidbody.isKinematic = true;
 
         OnKilled(FindWaveDirector());
+        PlaySfx(death);
 
         if (animator)
         {
@@ -532,6 +575,29 @@ public class Target_Base : MonoBehaviour
     {
     }
 
+    protected int ResolveIdentifyScore(bool expectEnemy)
+    {
+        float confidence = 0f;
+        bool asEnemy = false;
+        bool identified = false;
+        CCTVController cctv = FindFirstObjectByType<CCTVController>();
+        if (cctv != null)
+            identified = cctv.TryGetIdentification(this, out asEnemy, out confidence);
+
+        if (!identified)
+            confidence = 0f;
+
+        int score = RoundScore(scoreCoefficient * Mathf.Clamp01(confidence));
+        if (identified && asEnemy != expectEnemy)
+            score = RoundScore(score * 0.5f);
+        return score;
+    }
+
+    static int RoundScore(float value)
+    {
+        return Mathf.Max(0, (int)Math.Round(value, MidpointRounding.AwayFromZero));
+    }
+
     void RemoveAtGoal()
     {
         DisableColliders();
@@ -557,6 +623,64 @@ public class Target_Base : MonoBehaviour
             if (colliders[i] != null)
                 colliders[i].enabled = false;
         }
+    }
+
+    void TickSfx(float deltaTime)
+    {
+        if (reachedGoal)
+            return;
+
+        TickFootstep(deltaTime);
+        TickVocal(deltaTime);
+    }
+
+    void TickFootstep(float deltaTime)
+    {
+        if (footstep == null || reachedDestination)
+        {
+            footstepTimer = 0f;
+            return;
+        }
+
+        float speed = GetStatusMoveSpeed();
+        if (speed < 0.2f)
+        {
+            footstepTimer = 0f;
+            return;
+        }
+
+        float interval = Mathf.Max(0.12f, footstepInterval * (3f / Mathf.Max(2f, speed)));
+        footstepTimer += deltaTime;
+        if (footstepTimer < interval)
+            return;
+
+        footstepTimer = 0f;
+        PlaySfx(footstep);
+    }
+
+    void TickVocal(float deltaTime)
+    {
+        if (vocal == null)
+            return;
+
+        vocalTimer -= deltaTime;
+        if (vocalTimer > 0f)
+            return;
+
+        PlaySfx(vocal);
+        vocalTimer = RandomVocalWait();
+    }
+
+    float RandomVocalWait()
+    {
+        float min = Mathf.Max(0.5f, Mathf.Min(vocalInterval.x, vocalInterval.y));
+        float max = Mathf.Max(min, Mathf.Max(vocalInterval.x, vocalInterval.y));
+        return UnityEngine.Random.Range(min, max);
+    }
+
+    void PlaySfx(SfxEvent sfx)
+    {
+        GameSfx.PlayWorld(sfx, transform.position);
     }
 
     IEnumerator DeathRoutine()

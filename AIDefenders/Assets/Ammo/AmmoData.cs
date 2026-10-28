@@ -44,7 +44,7 @@ public class AmmoData : ScriptableObject
         get { return explosionRadius > 0f && explosionDamage > 0f; }
     }
 
-    public void ApplyExplosion(Vector3 point, Target_Base exclude = null)
+    public void ApplyExplosion(Vector3 point, Target_Base exclude = null, float armorPierce = 3f)
     {
         if (!HasExplosion)
             return;
@@ -70,7 +70,7 @@ public class AmmoData : ScriptableObject
             float splash = explosionDamage * multiplier;
 
             if (splash > 0f)
-                target.TakeDamage(splash);
+                target.TakeDamage(splash, armorPierce);
         }
 
         Debug.DrawLine(point, point + Vector3.up * explosionRadius, Color.orange, 0.35f);

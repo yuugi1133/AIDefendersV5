@@ -174,7 +174,10 @@ public class HudSkillUi
         entry.callback.AddListener(_ =>
         {
             if (skills != null)
+            {
+                GameSfx.PlayUiClick();
                 skills.TryUseSlot(captured);
+            }
         });
         trigger.triggers.Add(entry);
 

@@ -72,7 +72,8 @@ MonoBehaviour:
   placeHeightOffset: 0.5
   overlapPadding: 0.9
   platformBaseCost: 40
-  platformCostIncrease: 20
+  platformMaxCount: 8
+  platformSellPrice: 5
   turretOptions:
   - displayName: Turret_Test
     prefab: {fileID: 9211372644908279419, guid: 268533bc8e4219e40a05aa364bd53732, type: 3}

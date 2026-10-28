@@ -17,6 +17,7 @@ public class GameHud : MonoBehaviour
     HudWorldOverlay worldOverlay;
     HudWaveBanner waveBanner;
     HudSpawnerPreview spawnerPreview;
+    HudStageResult stageResult;
     Text phaseText;
     Text waveText;
     Text timeText;
@@ -51,6 +52,7 @@ public class GameHud : MonoBehaviour
             worldOverlay = new HudWorldOverlay(canvasRt);
             waveBanner = new HudWaveBanner(canvasRt);
             spawnerPreview = new HudSpawnerPreview(canvasRt, waveDirector);
+            stageResult = new HudStageResult(canvasRt);
         }
         Refresh(true);
     }
@@ -96,6 +98,8 @@ public class GameHud : MonoBehaviour
             skillUi.Tick();
         if (waveBanner != null)
             waveBanner.Tick();
+        if (stageResult != null)
+            stageResult.Tick();
     }
 
     void LateUpdate()
@@ -149,6 +153,8 @@ public class GameHud : MonoBehaviour
     void HandleStageComplete()
     {
         Refresh(true);
+        if (stageResult != null && waveDirector != null)
+            stageResult.Show(waveDirector.LastReport);
     }
 
     void Refresh(bool includeTime)

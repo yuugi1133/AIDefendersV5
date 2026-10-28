@@ -5,12 +5,10 @@ public class Target_Friendly : Target_Base
 {
     [Header("Pass Reward")]
     public int passFunds = 15;
-    public int passScore = 10;
 
     [Header("Friendly Fire")]
     [FormerlySerializedAs("killReward")]
     public int friendlyFireFunds = 10;
-    public int friendlyFireScore = 0;
 
     protected override void OnKilled(WaveDirector director)
     {
@@ -18,7 +16,8 @@ public class Target_Friendly : Target_Base
             return;
 
         director.AddFunds(-friendlyFireFunds);
-        director.AddScore(-friendlyFireScore);
+        director.RegisterTargetOutcome(this, true);
+        HudFx.ShowFunds(GetPopupWorld(), -friendlyFireFunds);
     }
 
     protected override void OnReachedGoal(WaveDirector director)
@@ -26,7 +25,12 @@ public class Target_Friendly : Target_Base
         if (director == null)
             return;
 
+        int score = ResolveIdentifyScore(false);
         director.AddFunds(passFunds);
-        director.AddScore(passScore);
+        director.AddScore(score);
+        director.RegisterTargetOutcome(this, false);
+        Vector3 popup = GetPopupWorld();
+        HudFx.ShowFunds(popup, passFunds);
+        HudFx.ShowScore(popup, score);
     }
 }

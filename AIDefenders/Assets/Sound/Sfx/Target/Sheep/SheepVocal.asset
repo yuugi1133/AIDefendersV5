@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a1c9e4f2b5846d0a3e8c1f0b9d24680, type: 3}
+  m_Name: SheepVocal
+  m_EditorClassIdentifier: Assembly-CSharp::SfxEvent
+  clips:
+  - {fileID: 8300000, guid: e1033df5d3dcf5f4c8584ab4588aae47, type: 3}
+  - {fileID: 8300000, guid: f1634f9ddaabbed42853a94619270bfa, type: 3}
+  - {fileID: 8300000, guid: 170c05146bc673446a577f7b41374011, type: 3}
+  - {fileID: 8300000, guid: 373e60a1b1a90cf4c9bc52932dc44602, type: 3}
+  - {fileID: 8300000, guid: 51e654c644f30874e987671c0760b0d0, type: 3}
+  volume: 0.65
+  pitch: {x: 0.95, y: 1.08}

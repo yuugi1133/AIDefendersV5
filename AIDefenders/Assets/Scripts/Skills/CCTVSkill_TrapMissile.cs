@@ -14,6 +14,7 @@ public class CCTVSkill_TrapMissile : CCTVActiveSkill
     public float muzzleOffset = 1.8f;
     public float slowDuration = 5f;
     public float slowSpeedScale = 0.25f;
+    public SfxEvent fireSfx;
 
     protected override void OnUse(CCTVSkillContext context)
     {
@@ -92,6 +93,7 @@ public class CCTVSkill_TrapMissile : CCTVActiveSkill
         }
 
         IgnoreVolleyCollisions(volley);
+        GameSfx.PlayWorld(fireSfx, origin);
     }
 
     List<Target_Base> CollectUniqueEnemyLocks(

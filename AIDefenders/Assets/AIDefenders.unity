@@ -2112,7 +2112,8 @@ MonoBehaviour:
   placeHeightOffset: 0.5
   overlapPadding: 0.9
   platformBaseCost: 40
-  platformCostIncrease: 20
+  platformMaxCount: 8
+  platformSellPrice: 5
 --- !u!114 &709686988
 MonoBehaviour:
   m_ObjectHideFlags: 0

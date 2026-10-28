@@ -1175,6 +1175,11 @@ MonoBehaviour:
   animator: {fileID: 7922649801668778610}
   renderer: {fileID: 7859736817349278344}
   rigidbody: {fileID: 5858213317358515193}
+  footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e90a, type: 2}
+  vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e90b, type: 2}
+  death: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e90c, type: 2}
+  footstepInterval: 0.3
+  vocalInterval: {x: 4.5, y: 11}
 --- !u!1 &7500468941402322376
 GameObject:
   m_ObjectHideFlags: 0

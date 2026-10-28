@@ -285,6 +285,18 @@ public class MenuManager_MainMenu : MonoBehaviour
                 displayName = "Grassfield 1",
                 sceneName = "Grassfield_1",
                 description = "초원 지대"
+            },
+            new CampaignStageEntry
+            {
+                displayName = "Grassfield 2",
+                sceneName = "Grassfield_2",
+                description = "초원 지대"
+            },
+            new CampaignStageEntry
+            {
+                displayName = "Grassfield 3",
+                sceneName = "Grassfield_3",
+                description = "초원 지대"
             }
         };
     }
@@ -320,7 +332,7 @@ public class MenuManager_MainMenu : MonoBehaviour
         cardRt.anchorMin = new Vector2(0.5f, 0.5f);
         cardRt.anchorMax = new Vector2(0.5f, 0.5f);
         cardRt.pivot = new Vector2(0.5f, 0.5f);
-        cardRt.sizeDelta = new Vector2(720f, 540f);
+        cardRt.sizeDelta = new Vector2(720f, 620f);
         cardRt.anchoredPosition = Vector2.zero;
 
         Text title = UiFont.AddText(cardRt, "Title", "스테이지 선택", 36, TextAnchor.MiddleLeft, Color.white, UiType.Title);
@@ -361,18 +373,26 @@ public class MenuManager_MainMenu : MonoBehaviour
         rt.sizeDelta = new Vector2(0f, 96f);
         rt.anchoredPosition = new Vector2(0f, -index * 112f);
 
+        bool unlocked = GameProgress.IsStageUnlocked(stage.sceneName);
+        if (!unlocked)
+            image.color = new Color(0.72f, 0.74f, 0.76f, 1f);
         Button button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
+        button.interactable = unlocked;
         string sceneName = stage.sceneName;
-        button.onClick.AddListener(() => LoadScene(sceneName));
+        if (unlocked)
+            button.onClick.AddListener(() => LoadScene(sceneName));
 
-        Text name = UiFont.AddText(rt, "Name", stage.displayName, 28, TextAnchor.MiddleLeft, new Color(0.12f, 0.13f, 0.15f, 1f), UiType.TitleMedium);
+        Color nameColor = unlocked ? new Color(0.12f, 0.13f, 0.15f, 1f) : new Color(0.42f, 0.44f, 0.48f, 1f);
+        Text name = UiFont.AddText(rt, "Name", stage.displayName, 28, TextAnchor.MiddleLeft, nameColor, UiType.TitleMedium);
         name.rectTransform.anchorMin = new Vector2(0f, 0.45f);
         name.rectTransform.anchorMax = new Vector2(1f, 1f);
         name.rectTransform.offsetMin = new Vector2(24f, 0f);
         name.rectTransform.offsetMax = new Vector2(-24f, -8f);
 
-        string desc = string.IsNullOrWhiteSpace(stage.description) ? stage.sceneName : stage.description;
+        string desc = unlocked
+            ? (string.IsNullOrWhiteSpace(stage.description) ? stage.sceneName : stage.description)
+            : "잠김";
         Text detail = UiFont.AddText(rt, "Detail", desc, 20, TextAnchor.UpperLeft, new Color(0.32f, 0.34f, 0.38f, 1f), UiType.Body);
         detail.rectTransform.anchorMin = new Vector2(0f, 0f);
         detail.rectTransform.anchorMax = new Vector2(1f, 0.5f);

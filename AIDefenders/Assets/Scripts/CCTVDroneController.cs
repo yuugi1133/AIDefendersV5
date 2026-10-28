@@ -20,6 +20,15 @@ public class CCTVDroneController : MonoBehaviour
     [Header("Zoom")]
     public float[] zoomFovs = { 60f, 40f, 25f };
 
+    [Header("Sfx")]
+    public SfxEvent flightLoop;
+    public float idleLoopPitch = 0.88f;
+    public float maxLoopPitch = 1.22f;
+    public float loopPitchSmooth = 6f;
+    public float idleLoopVolume = 0.28f;
+    public float maxLoopVolume = 0.55f;
+    public float loopVolumeSmooth = 5f;
+
     [Header("Refs")]
     public CCTVMoveLimit moveLimit;
 
@@ -34,6 +43,9 @@ public class CCTVDroneController : MonoBehaviour
     float pitch;
     int zoomLevel;
     bool flying;
+    AudioSource flightSource;
+    float currentPitch;
+    float currentVolume;
 
     void Awake()
     {
@@ -57,6 +69,8 @@ public class CCTVDroneController : MonoBehaviour
         Vector3 euler = transform.rotation.eulerAngles;
         yaw = euler.y;
         pitch = NormalizePitch(euler.x);
+        CreateFlightSource();
+        currentPitch = idleLoopPitch;
     }
 
     void Start()
@@ -128,6 +142,7 @@ public class CCTVDroneController : MonoBehaviour
 
     void Update()
     {
+        TickFlightLoop();
         if (!flying)
             return;
 
@@ -332,5 +347,60 @@ public class CCTVDroneController : MonoBehaviour
     {
         Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
         Cursor.visible = !locked;
+    }
+
+    void CreateFlightSource()
+    {
+        GameObject go = new GameObject("FlightLoop");
+        go.transform.SetParent(transform, false);
+        flightSource = go.AddComponent<AudioSource>();
+        flightSource.playOnAwake = false;
+        flightSource.loop = true;
+        flightSource.spatialBlend = 0f;
+        flightSource.dopplerLevel = 0f;
+        flightSource.priority = 64;
+        flightSource.volume = 0f;
+        flightSource.pitch = idleLoopPitch;
+    }
+
+    void TickFlightLoop()
+    {
+        if (flightSource == null)
+            return;
+
+        AudioClip clip = flightLoop != null ? flightLoop.FirstClip() : null;
+        if (clip == null)
+        {
+            if (flightSource.isPlaying)
+                flightSource.Stop();
+            currentVolume = 0f;
+            return;
+        }
+
+        if (flightSource.clip != clip)
+            flightSource.clip = clip;
+
+        float speed = body != null && flying ? body.linearVelocity.magnitude : 0f;
+        float t = maxSpeed > 0.01f ? Mathf.Clamp01(speed / maxSpeed) : 0f;
+        float targetPitch = Mathf.Lerp(idleLoopPitch, maxLoopPitch, t);
+        float eventVolume = flightLoop != null ? flightLoop.volume : 1f;
+        float targetVolume = flying
+            ? Mathf.Lerp(idleLoopVolume, maxLoopVolume, t) * eventVolume
+            : 0f;
+
+        currentPitch = Mathf.MoveTowards(currentPitch, targetPitch, loopPitchSmooth * Time.deltaTime);
+        currentVolume = Mathf.MoveTowards(currentVolume, targetVolume, loopVolumeSmooth * Time.deltaTime);
+        flightSource.pitch = currentPitch;
+        flightSource.volume = currentVolume;
+
+        if (currentVolume > 0.001f)
+        {
+            if (!flightSource.isPlaying)
+                flightSource.Play();
+        }
+        else if (flightSource.isPlaying)
+        {
+            flightSource.Stop();
+        }
     }
 }

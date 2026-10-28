@@ -1276,6 +1276,11 @@ MonoBehaviour:
   animator: {fileID: 8881504610387854120}
   renderer: {fileID: 4349140359847211452}
   isDead: 0
+  footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e90d, type: 2}
+  vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e90e, type: 2}
+  death: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e90f, type: 2}
+  footstepInterval: 0.22
+  vocalInterval: {x: 3.5, y: 9}
 --- !u!1 &8122850409471221505
 GameObject:
   m_ObjectHideFlags: 0

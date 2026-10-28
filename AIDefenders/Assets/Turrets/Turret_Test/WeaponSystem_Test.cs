@@ -15,6 +15,9 @@ public class WeaponSystem : MonoBehaviour
     bool isReloading = false;
     float lastFireTime = 0f;
     float damageScale = 1f;
+    TurretController turret;
+    float baseSpread;
+    bool capturedSpread;
     GameObject beamRoot;
     LineRenderer beamGlow;
     LineRenderer beamCore;
@@ -45,6 +48,14 @@ public class WeaponSystem : MonoBehaviour
         }
     }
 
+    void Awake()
+    {
+        turret = GetComponent<TurretController>();
+        if (turret == null)
+            turret = GetComponentInParent<TurretController>();
+        CaptureBaseSpread();
+    }
+
     void Start()
     {
         currentAmmo = maxAmmo;
@@ -52,9 +63,11 @@ public class WeaponSystem : MonoBehaviour
 
     public void ApplyTierStats(float delay, int magazine, float reload, float scale)
     {
+        CaptureBaseSpread();
         fireDelay = Mathf.Max(0.01f, delay);
         maxAmmo = Mathf.Max(1, magazine);
-        reloadTime = Mathf.Max(0.01f, reload);
+        reloadTime = Mathf.Max(0.01f, reload + TurretResearch.ReloadBonus(turret));
+        spreadAngle = Mathf.Max(0f, baseSpread + TurretResearch.SpreadBonus(turret));
         damageScale = Mathf.Max(0.01f, scale);
         if (currentAmmo > maxAmmo)
             currentAmmo = maxAmmo;
@@ -67,6 +80,11 @@ public class WeaponSystem : MonoBehaviour
         if (ammo == null)
             return 0f;
         return ammo.damage * damageScale;
+    }
+
+    float GetArmorPierce()
+    {
+        return turret != null ? turret.armorPierce : 3f;
     }
 
     public bool UsesProjectileLead
@@ -86,7 +104,22 @@ public class WeaponSystem : MonoBehaviour
         if (ammo == null)
             return 0f;
 
-        return ammo.bulletSpeed;
+        return ammo.bulletSpeed + TurretResearch.BulletSpeedBonus(turret);
+    }
+
+    void CaptureBaseSpread()
+    {
+        if (capturedSpread)
+            return;
+        baseSpread = spreadAngle;
+        capturedSpread = true;
+    }
+
+    public void RestoreAmmo(int amount)
+    {
+        if (amount <= 0)
+            return;
+        currentAmmo = Mathf.Min(maxAmmo, currentAmmo + amount);
     }
 
     public bool CanFire()
@@ -134,6 +167,7 @@ public class WeaponSystem : MonoBehaviour
         }
 
         lastFireTime = Time.time;
+        PlayFireSfx();
         ConsumeAmmo();
     }
 
@@ -186,7 +220,7 @@ public class WeaponSystem : MonoBehaviour
             return;
         }
 
-        Vector3 velocity = direction * ammo.bulletSpeed;
+        Vector3 velocity = direction * GetMuzzleSpeed();
         bool homing = ammo.fireMode == WeaponFireMode.Homing;
 
         bullet.Init(
@@ -196,7 +230,9 @@ public class WeaponSystem : MonoBehaviour
             ammo.lifetime,
             homing ? homingTarget : null,
             homing ? ammo.homingTurnRate : 0f,
-            ammo
+            ammo,
+            GetArmorPierce(),
+            turret
         );
 
         CombatVfx.AttachTrail(ammo.trailEffect, bulletObj.transform);
@@ -210,9 +246,9 @@ public class WeaponSystem : MonoBehaviour
         {
             Target_Base target = hit.collider.GetComponentInParent<Target_Base>();
             if (target != null)
-                target.TakeDamage(GetShotDamage());
+                target.TakeDamage(GetShotDamage(), GetArmorPierce(), TurretResearch.WeakspotBonus(turret, target), turret);
 
-            ammo.ApplyExplosion(hit.point, null);
+            ammo.ApplyExplosion(hit.point, null, GetArmorPierce());
             CombatVfx.PlayImpact(ammo.impactEffect, hit.point, hit.normal);
             Debug.DrawLine(origin, hit.point, Color.cyan, 0.1f);
         }
@@ -239,11 +275,12 @@ public class WeaponSystem : MonoBehaviour
             {
                 Target_Base target = hit.collider.GetComponentInParent<Target_Base>();
                 if (target != null)
-                    target.TakeDamage(GetShotDamage());
+                    target.TakeDamage(GetShotDamage(), GetArmorPierce(), TurretResearch.WeakspotBonus(turret, target), turret);
 
-                ammo.ApplyExplosion(hit.point, null);
+                ammo.ApplyExplosion(hit.point, null, GetArmorPierce());
                 CombatVfx.PlayBeamImpact(ammo.impactEffect, hit.point, impactNormal);
                 lastFireTime = Time.time;
+                PlayFireSfx();
             }
         }
 
@@ -323,6 +360,12 @@ public class WeaponSystem : MonoBehaviour
             beamRoot.SetActive(visible);
     }
 
+    void PlayFireSfx()
+    {
+        if (turret != null)
+            turret.PlayFireSfx();
+    }
+
     void ConsumeAmmo()
     {
         if (ammo.fireMode == WeaponFireMode.Beam)
@@ -336,6 +379,8 @@ public class WeaponSystem : MonoBehaviour
     IEnumerator Reload()
     {
         isReloading = true;
+        if (turret != null)
+            turret.PlayReloadSfx();
         yield return new WaitForSeconds(reloadTime);
         currentAmmo = maxAmmo;
         isReloading = false;

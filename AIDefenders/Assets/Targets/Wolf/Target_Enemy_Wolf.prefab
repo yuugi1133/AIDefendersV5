@@ -1239,7 +1239,9 @@ MonoBehaviour:
   maxHP: 40
   currentHP: 0
   moveSpeed: 12
+  armorValue: 0
   isSample: 0
+  scoreCoefficient: 10
   destination: {fileID: 0}
   waypointRadius: 1.2
   arriveDistance: 1.5
@@ -1257,8 +1259,12 @@ MonoBehaviour:
   animator: {fileID: 4665554691871557518}
   renderer: {fileID: 393502265896259782}
   rigidbody: {fileID: 4344226870335729210}
+  footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e901, type: 2}
+  vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e902, type: 2}
+  death: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e903, type: 2}
+  footstepInterval: 0.32
+  vocalInterval: {x: 4, y: 10}
   killFunds: 10
-  killScore: 10
   baseDamage: 1
 --- !u!1 &8972186737345477160
 GameObject:

@@ -84,17 +84,24 @@ public class CCTVController : MonoBehaviour
 
     public bool TryGetIdentification(Target_Base target, out bool asEnemy)
     {
+        return TryGetIdentification(target, out asEnemy, out _);
+    }
+
+    public bool TryGetIdentification(Target_Base target, out bool asEnemy, out float confidence)
+    {
         asEnemy = false;
+        confidence = 0f;
         if (target == null)
             return false;
 
         if (!tracks.TryGetValue(target, out YoloTrack track))
             return false;
 
-        if (track.target == null || track.target.isDead)
+        if (track.target == null)
             return false;
 
         asEnemy = track.asEnemy;
+        confidence = track.confidence;
         return true;
     }
 

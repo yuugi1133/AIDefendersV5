@@ -36,6 +36,7 @@ public class HudBuildUi
     Text inspectUpgrade;
     Text inspectState;
     Button upgradeButton;
+    GameObject storeButton;
     Text upgradeText;
     Text sellText;
 
@@ -98,7 +99,10 @@ public class HudBuildUi
         AddPointerDown(toggleRoot, eventData =>
         {
             if (IsLeft(eventData))
+            {
+                GameSfx.PlayUiClick();
                 placer.ToggleBuildMenu();
+            }
         });
 
         buildRoot = new GameObject("BuildPanel");
@@ -123,7 +127,10 @@ public class HudBuildUi
         AddPointerDown(platformRow, eventData =>
         {
             if (IsLeft(eventData))
+            {
+                GameSfx.PlayUiClick();
                 placer.RequestPlatformPlace();
+            }
         });
 
         Image listFrame = UiFont.AddImage(buildRt, "TurretList", new Color(0.06f, 0.07f, 0.09f, 0.92f));
@@ -175,7 +182,10 @@ public class HudBuildUi
         AddPointerDown(skipRoot, eventData =>
         {
             if (IsLeft(eventData) && waveDirector != null)
+            {
+                GameSfx.PlayUiClick();
                 waveDirector.SkipPrep();
+            }
         });
 
         storageRoot = CreatePanel("StorageBar", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 20f), new Vector2(-48f, 110f));
@@ -237,7 +247,7 @@ public class HudBuildUi
         sellText = CreateActionButton(inspectRoot.transform, "Sell", "판매", new Vector2(0.02f, 0.06f), new Vector2(0.33f, 0.3f), () => placer.RequestSellSelected());
         upgradeText = null;
         upgradeButton = CreateActionButtonGo(inspectRoot.transform, "Upgrade", "업그레이드", new Vector2(0.35f, 0.06f), new Vector2(0.66f, 0.3f), () => placer.RequestUpgradeSelected(), out upgradeText);
-        CreateActionButton(inspectRoot.transform, "Store", "보관", new Vector2(0.68f, 0.06f), new Vector2(0.98f, 0.3f), () => placer.RequestStoreSelected());
+        storeButton = CreateActionButtonGo(inspectRoot.transform, "Store", "보관", new Vector2(0.68f, 0.06f), new Vector2(0.98f, 0.3f), () => placer.RequestStoreSelected(), out _).gameObject;
     }
 
     void BuildTurretRows()
@@ -264,7 +274,10 @@ public class HudBuildUi
             AddPointerDown(row, eventData =>
             {
                 if (IsLeft(eventData))
+                {
+                    GameSfx.PlayUiClick();
                     placer.RequestTurretPlace(captured);
+                }
             });
         }
     }
@@ -279,12 +292,17 @@ public class HudBuildUi
         if (!platformRow.activeSelf)
             return;
 
+        int count = placer.PlatformCount;
+        int max = placer.PlatformMaxCount;
         if (placer.IsDraggingPlatform)
-            platformText.text = "배치 중...  우클릭 취소";
+            platformText.text = "배치 중...  우클릭 취소  " + count + "/" + max;
         else
-            platformText.text = "포탑 플랫폼 설치  $" + placer.PlatformCost;
+            platformText.text = "포탑 플랫폼 설치  $" + placer.PlatformCost + "  " + count + "/" + max;
 
-        platformRow.GetComponent<Image>().color = placer.IsDraggingPlatform ? activeColor : rowColor;
+        bool full = count >= max;
+        platformRow.GetComponent<Image>().color = placer.IsDraggingPlatform
+            ? activeColor
+            : (full ? new Color(0.18f, 0.19f, 0.22f, 1f) : rowColor);
     }
 
     void RefreshTurretRows()
@@ -341,15 +359,25 @@ public class HudBuildUi
             AddPointerDown(row, eventData =>
             {
                 if (IsLeft(eventData))
+                {
+                    GameSfx.PlayUiClick();
                     placer.RequestStoredPlace(index);
+                }
             });
         }
     }
 
     void RefreshInspect()
     {
-        TurretController turret = placer.ShowBuildUi ? placer.SelectedTurret : null;
-        if (turret == null)
+        if (!placer.ShowBuildUi)
+        {
+            SetActive(inspectRoot, false);
+            return;
+        }
+
+        TurretController turret = placer.SelectedTurret;
+        TurretPlatform platform = placer.SelectedPlatform;
+        if (turret == null && platform == null)
         {
             SetActive(inspectRoot, false);
             return;
@@ -362,7 +390,7 @@ public class HudBuildUi
             return;
         }
 
-        Vector3 world = turret.GetInspectAnchor();
+        Vector3 world = placer.GetInspectAnchor();
         Vector3 screen = camera.WorldToScreenPoint(world);
         if (screen.z <= 0.1f)
         {
@@ -382,11 +410,24 @@ public class HudBuildUi
         pos.y = Mathf.Clamp(pos.y, canvasRect.yMin + 12f, canvasRect.yMax - height - 12f);
         inspectRt.anchoredPosition = pos;
 
+        bool hasTurret = turret != null;
+        SetActive(inspectAmmo.gameObject, hasTurret);
+        SetActive(inspectUpgrade.gameObject, hasTurret);
+        SetActive(inspectState.gameObject, hasTurret);
+        SetActive(upgradeButton.gameObject, hasTurret);
+        SetActive(storeButton, hasTurret);
+
+        sellText.text = "판매  $" + placer.GetSelectedSellPrice();
+        if (!hasTurret)
+        {
+            inspectTitle.text = "플랫폼";
+            return;
+        }
+
         inspectTitle.text = turret.TypeLabel;
         inspectAmmo.text = "탄환  " + TurretPlatformPlacer.AmmoStatus(turret);
         inspectUpgrade.text = "업그레이드  " + turret.upgradeLevel + "단계";
         inspectState.text = "상태  " + TurretPlatformPlacer.StateLabel(turret);
-        sellText.text = "판매  $" + placer.GetSelectedSellPrice();
 
         bool canUpgrade = turret.CanUpgrade();
         int cost = turret.NextUpgradeCost();
@@ -458,7 +499,11 @@ public class HudBuildUi
         rt.offsetMax = Vector2.zero;
         Button button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
-        button.onClick.AddListener(click);
+        button.onClick.AddListener(() =>
+        {
+            GameSfx.PlayUiClick();
+            click();
+        });
         text = UiFont.AddText(rt, "Label", label, 16, TextAnchor.MiddleCenter, new Color(0.12f, 0.13f, 0.15f, 1f), UiType.BodyMedium);
         text.raycastTarget = false;
         UiFont.Stretch(text.rectTransform);

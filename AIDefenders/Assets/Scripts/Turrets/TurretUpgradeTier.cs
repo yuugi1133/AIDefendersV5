@@ -12,6 +12,7 @@ public class TurretUpgradeTier
     public int maxAmmo = 10;
     public float reloadTime = 2f;
     public float range = 30f;
+    public float armorPierce = 1f;
     public int upgradeCost;
     public float upgradeTime = 4f;
 }

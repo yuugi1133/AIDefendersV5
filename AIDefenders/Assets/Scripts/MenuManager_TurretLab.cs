@@ -32,7 +32,6 @@ public class MenuManager_TurretLab : MonoBehaviour
 {
     public TurretPlatform previewPlatform;
     public TurretLabEntry[] turretCatalog;
-    public int researchPoints;
 
     readonly Color panelColor = new Color(0.12f, 0.14f, 0.18f, 0.94f);
     readonly Color rowColor = new Color(0.22f, 0.24f, 0.28f, 1f);
@@ -55,6 +54,7 @@ public class MenuManager_TurretLab : MonoBehaviour
 
         ConfigureCanvas();
         ApplyExistingFonts();
+        WireSceneButtonClicks();
         BuildLabPanel();
 
         if (turretCatalog != null && turretCatalog.Length > 0)
@@ -148,7 +148,7 @@ public class MenuManager_TurretLab : MonoBehaviour
         AddSectionLabel(sidebarRt, "포탑");
         turretListContent = CreateScrollSection(sidebarRt, "TurretList", 280f);
         AddSectionLabel(sidebarRt, "연구");
-        researchListContent = CreateScrollSection(sidebarRt, "ResearchList", 240f);
+        researchListContent = CreateScrollSection(sidebarRt, "ResearchList", 380f);
 
         Image pointsBar = UiFont.AddImage(sidebarRt, "ResearchPoints", new Color(0.08f, 0.09f, 0.12f, 1f));
         LayoutElement pointsLayout = pointsBar.gameObject.AddComponent<LayoutElement>();
@@ -168,6 +168,7 @@ public class MenuManager_TurretLab : MonoBehaviour
         pointsText.rectTransform.offsetMax = new Vector2(-16f, 0f);
 
         RebuildTurretList();
+        RefreshResearchPoints();
     }
 
     void AddSectionLabel(Transform parent, string label)
@@ -238,6 +239,7 @@ public class MenuManager_TurretLab : MonoBehaviour
             turretRowImages[i] = row;
             Button button = row.gameObject.AddComponent<Button>();
             button.targetGraphic = row;
+            BindUiClick(button);
             button.onClick.AddListener(() => SelectTurret(index));
         }
 
@@ -250,7 +252,8 @@ public class MenuManager_TurretLab : MonoBehaviour
         ClearChildren(researchListContent);
 
         TurretLabEntry entry = GetSelectedEntry();
-        TurretLabResearch[] researches = entry != null ? entry.researches : null;
+        string group = entry != null ? TurretResearch.GroupOfPrefab(entry.prefab) : "";
+        TurretResearchDef[] researches = TurretResearch.ForGroup(group);
         if (researches == null || researches.Length == 0)
         {
             CreateRow(researchListContent, "EmptyResearch", "준비 중 — 연구가 아직 없습니다.", mutedColor);
@@ -259,44 +262,73 @@ public class MenuManager_TurretLab : MonoBehaviour
 
         for (int i = 0; i < researches.Length; i++)
         {
-            TurretLabResearch research = researches[i];
+            TurretResearchDef research = researches[i];
             if (research == null)
                 continue;
 
-            string title = string.IsNullOrWhiteSpace(research.displayName) ? "연구" : research.displayName;
-            string detail = research.description;
-            if (research.cost > 0)
-                detail = string.IsNullOrWhiteSpace(detail)
-                    ? research.cost + " RP"
-                    : detail + "  ·  " + research.cost + " RP";
+            bool complete = TurretResearch.IsComplete(research.id);
+            bool unlocked = TurretResearch.PrerequisitesMet(research);
+            bool affordable = GameProgress.ResearchPoints >= research.cost;
+            Color titleColor = complete ? new Color(0.55f, 0.92f, 0.68f, 1f) : unlocked ? textColor : mutedColor;
+            Image row = CreateRow(researchListContent, "Research_" + i, research.displayName, titleColor);
 
-            Image row = CreateRow(researchListContent, "Research_" + i, title, textColor);
-            if (!string.IsNullOrWhiteSpace(detail))
+            string detail;
+            if (complete)
+                detail = research.description + "  ·  완료";
+            else if (!unlocked)
+                detail = "선행 필요  ·  " + TurretResearch.PrerequisiteLabel(research);
+            else if (!affordable)
+                detail = research.description + "  ·  " + research.cost + " RP  ·  포인트 부족";
+            else
+                detail = research.description + "  ·  " + research.cost + " RP";
+
+            Text sub = UiFont.AddText(row.rectTransform, "Detail", detail, 16, TextAnchor.MiddleLeft, mutedColor, UiType.Body);
+            sub.rectTransform.anchorMin = new Vector2(0f, 0f);
+            sub.rectTransform.anchorMax = new Vector2(1f, 0.48f);
+            sub.rectTransform.offsetMin = new Vector2(14f, 6f);
+            sub.rectTransform.offsetMax = new Vector2(-14f, 0f);
+
+            Text titleText = row.GetComponentInChildren<Text>();
+            if (titleText != null)
             {
-                Text sub = UiFont.AddText(row.rectTransform, "Detail", detail, 16, TextAnchor.MiddleLeft, mutedColor, UiType.Body);
-                sub.rectTransform.anchorMin = new Vector2(0f, 0f);
-                sub.rectTransform.anchorMax = new Vector2(1f, 0.48f);
-                sub.rectTransform.offsetMin = new Vector2(14f, 6f);
-                sub.rectTransform.offsetMax = new Vector2(-14f, 0f);
+                titleText.alignment = TextAnchor.LowerLeft;
+                titleText.rectTransform.anchorMin = new Vector2(0f, 0.42f);
+                titleText.rectTransform.anchorMax = new Vector2(1f, 1f);
+                titleText.rectTransform.offsetMin = new Vector2(14f, 0f);
+                titleText.rectTransform.offsetMax = new Vector2(-14f, -6f);
+            }
 
-                Text titleText = row.GetComponentInChildren<Text>();
-                if (titleText != null)
-                {
-                    titleText.alignment = TextAnchor.LowerLeft;
-                    titleText.rectTransform.anchorMin = new Vector2(0f, 0.42f);
-                    titleText.rectTransform.anchorMax = new Vector2(1f, 1f);
-                    titleText.rectTransform.offsetMin = new Vector2(14f, 0f);
-                    titleText.rectTransform.offsetMax = new Vector2(-14f, -6f);
-                }
+            LayoutElement layout = row.GetComponent<LayoutElement>();
+            if (layout != null)
+            {
+                layout.minHeight = 78f;
+                layout.preferredHeight = 78f;
+            }
 
-                LayoutElement layout = row.GetComponent<LayoutElement>();
-                if (layout != null)
-                {
-                    layout.minHeight = 72f;
-                    layout.preferredHeight = 72f;
-                }
+            if (complete)
+                row.color = new Color(0.16f, 0.28f, 0.22f, 1f);
+            else if (!unlocked)
+                row.color = new Color(0.16f, 0.17f, 0.19f, 1f);
+
+            if (!complete && unlocked)
+            {
+                string researchId = research.id;
+                Button button = row.gameObject.AddComponent<Button>();
+                button.targetGraphic = row;
+                button.interactable = affordable;
+                BindUiClick(button);
+                button.onClick.AddListener(() => TryBuyResearch(researchId));
             }
         }
+    }
+
+    void TryBuyResearch(string id)
+    {
+        if (!TurretResearch.TryUnlock(id))
+            return;
+
+        RefreshResearchPoints();
+        RefreshResearchList();
     }
 
     Image CreateRow(Transform parent, string name, string label, Color labelColor)
@@ -389,9 +421,15 @@ public class MenuManager_TurretLab : MonoBehaviour
         return turretCatalog[selectedIndex];
     }
 
-    string ResearchPointsLabel()
+    void RefreshResearchPoints()
     {
-        return "연구 포인트  " + Mathf.Max(0, researchPoints);
+        if (pointsText != null)
+            pointsText.text = ResearchPointsLabel();
+    }
+
+    static string ResearchPointsLabel()
+    {
+        return "연구 포인트  " + GameProgress.ResearchPoints;
     }
 
     static void ClearChildren(Transform parent)
@@ -401,6 +439,23 @@ public class MenuManager_TurretLab : MonoBehaviour
 
         for (int i = parent.childCount - 1; i >= 0; i--)
             Destroy(parent.GetChild(i).gameObject);
+    }
+
+    void WireSceneButtonClicks()
+    {
+        Canvas canvas = FindCanvas();
+        if (canvas == null)
+            return;
+
+        Button[] buttons = canvas.GetComponentsInChildren<Button>(true);
+        for (int i = 0; i < buttons.Length; i++)
+            BindUiClick(buttons[i]);
+    }
+
+    static void BindUiClick(Button button)
+    {
+        if (button != null)
+            button.onClick.AddListener(GameSfx.PlayUiClick);
     }
 
     Canvas FindCanvas()

@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a1c9e4f2b5846d0a3e8c1f0b9d24680, type: 3}
+  m_Name: WolfFootstep
+  m_EditorClassIdentifier: Assembly-CSharp::SfxEvent
+  clips:
+  - {fileID: 8300000, guid: a6aee0a35615f5d4c8af260d5ac04488, type: 3}
+  - {fileID: 8300000, guid: 37b97a42347279241b6b0e35a8bebcb7, type: 3}
+  volume: 0.55
+  pitch: {x: 0.9, y: 1.1}

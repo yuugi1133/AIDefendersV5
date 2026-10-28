@@ -342,6 +342,13 @@ MonoBehaviour:
   mouseSensitivity: 0.12
   minPitch: 15
   maxPitch: 80
+  flightLoop: {fileID: 11400000, guid: 4c5d6e7f809142a3b4c5d6e7f8091a2b, type: 2}
+  idleLoopPitch: 0.88
+  maxLoopPitch: 1.22
+  loopPitchSmooth: 6
+  idleLoopVolume: 0.28
+  maxLoopVolume: 0.55
+  loopVolumeSmooth: 5
   moveLimit: {fileID: 0}
 --- !u!114 &3588026141842346244
 MonoBehaviour:
@@ -408,6 +415,7 @@ MonoBehaviour:
   dartGravity: 0
   dartLifetime: 5
   muzzleOffset: 1.6
+  fireSfx: {fileID: 11400000, guid: 5d6e7f8091a253b4c5d6e7f8091a2b3c, type: 2}
 --- !u!114 &3588026141842346247
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -434,6 +442,7 @@ MonoBehaviour:
   muzzleOffset: 1.8
   slowDuration: 5
   slowSpeedScale: 0.25
+  fireSfx: {fileID: 11400000, guid: 6e7f8091a2b364c5d6e7f8091a2b3c4d, type: 2}
 --- !u!1 &7973859542795067651
 GameObject:
   m_ObjectHideFlags: 0

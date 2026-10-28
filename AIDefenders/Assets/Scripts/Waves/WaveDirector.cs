@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System;
 using System.Collections.Generic;
 
@@ -36,6 +37,15 @@ public class WaveDirector : MonoBehaviour
     public int Score { get; private set; }
     public float BaseHP { get; private set; }
     public float MaxBaseHP { get; private set; }
+    public StageReport LastReport { get; private set; }
+
+    int enemiesKilled;
+    int friendliesPassed;
+    int enemiesPassed;
+    int friendliesKilled;
+    int identifyCorrect;
+    int identifyWrong;
+    int identifyMissed;
 
     public int WaveCount
     {
@@ -123,6 +133,14 @@ public class WaveDirector : MonoBehaviour
         CurrentWaveIndex = 0;
         Funds = Mathf.Max(0, stage.startingFunds);
         Score = 0;
+        enemiesKilled = 0;
+        friendliesPassed = 0;
+        enemiesPassed = 0;
+        friendliesKilled = 0;
+        identifyCorrect = 0;
+        identifyWrong = 0;
+        identifyMissed = 0;
+        LastReport = null;
         MaxBaseHP = stage.startingBaseHP > 0f ? stage.startingBaseHP : 20f;
         BaseHP = MaxBaseHP;
         OnFundsChanged?.Invoke(Funds);
@@ -164,6 +182,43 @@ public class WaveDirector : MonoBehaviour
         OnScoreChanged?.Invoke(Score);
     }
 
+    public void RegisterTargetOutcome(Target_Base target, bool killed)
+    {
+        if (target == null || target.isSample)
+            return;
+
+        bool isEnemy = target is Target_Enemy;
+        bool isFriendly = target is Target_Friendly;
+        if (!isEnemy && !isFriendly)
+            return;
+
+        if (killed)
+        {
+            if (isEnemy)
+                enemiesKilled++;
+            else
+                friendliesKilled++;
+        }
+        else if (isEnemy)
+        {
+            enemiesPassed++;
+        }
+        else
+        {
+            friendliesPassed++;
+        }
+
+        CCTVController cctv = FindFirstObjectByType<CCTVController>();
+        bool asEnemy = false;
+        bool identified = cctv != null && cctv.TryGetIdentification(target, out asEnemy, out _);
+        if (!identified)
+            identifyMissed++;
+        else if (asEnemy == isEnemy)
+            identifyCorrect++;
+        else
+            identifyWrong++;
+    }
+
     public void DamageBase(float amount)
     {
         if (amount <= 0f || BaseHP <= 0f)
@@ -174,10 +229,7 @@ public class WaveDirector : MonoBehaviour
         if (BaseHP > 0f)
             return;
 
-        Phase = WavePhase.Complete;
-        PhaseTimeRemaining = 0f;
-        Debug.Log("기지 파괴");
-        OnStageComplete?.Invoke();
+        CompleteStage("기지 파괴");
     }
 
     void Update()
@@ -336,6 +388,7 @@ public class WaveDirector : MonoBehaviour
             }
 
             chosen.SpawnGroup(group);
+            GameSfx.PlayGroupSpawned();
         }
     }
 
@@ -441,6 +494,38 @@ public class WaveDirector : MonoBehaviour
         return true;
     }
 
+    void CompleteStage(string log)
+    {
+        Phase = WavePhase.Complete;
+        PhaseTimeRemaining = 0f;
+        LastReport = BuildReport();
+        LastReport.researchPointsGained = GameProgress.ApplyStageResult(
+            SceneManager.GetActiveScene().name,
+            LastReport.score,
+            LastReport.cleared);
+        LastReport.researchPointsTotal = GameProgress.ResearchPoints;
+        Debug.Log(log);
+        OnStageComplete?.Invoke();
+    }
+
+    StageReport BuildReport()
+    {
+        StageReport report = new StageReport
+        {
+            cleared = BaseHP > 0.01f,
+            score = Score,
+            enemiesKilled = enemiesKilled,
+            friendliesPassed = friendliesPassed,
+            enemiesPassed = enemiesPassed,
+            friendliesKilled = friendliesKilled,
+            identifyCorrect = identifyCorrect,
+            identifyWrong = identifyWrong,
+            identifyMissed = identifyMissed
+        };
+        report.grade = StageReport.ComputeGrade(report);
+        return report;
+    }
+
     void EndCurrentWave()
     {
         OnWaveEnded?.Invoke(CurrentWaveIndex);
@@ -448,10 +533,7 @@ public class WaveDirector : MonoBehaviour
         bool lastWave = CurrentWaveIndex >= stage.waves.Length - 1;
         if (lastWave)
         {
-            Phase = WavePhase.Complete;
-            PhaseTimeRemaining = 0f;
-            Debug.Log("스테이지 완료");
-            OnStageComplete?.Invoke();
+            CompleteStage("스테이지 완료");
             return;
         }
 

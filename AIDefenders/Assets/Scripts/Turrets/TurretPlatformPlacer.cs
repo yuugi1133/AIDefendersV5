@@ -13,7 +13,8 @@ public class TurretPlatformPlacer : MonoBehaviour
     public float placeHeightOffset = 0.5f;
     public float overlapPadding = 0.9f;
     public int platformBaseCost = 40;
-    public int platformCostIncrease = 20;
+    public int platformMaxCount = 8;
+    public int platformSellPrice = 5;
 
     WaveDirector waveDirector;
     CCTVController cctv;
@@ -34,11 +35,13 @@ public class TurretPlatformPlacer : MonoBehaviour
     readonly List<RaycastResult> uiRaycasts = new List<RaycastResult>();
     bool combatBuildOpen;
     TurretController selectedTurret;
+    TurretPlatform selectedPlatform;
     Renderer[] highlightRenderers;
     Color[][] highlightOriginalColors;
     Color validColor = new Color(0.35f, 0.85f, 0.4f, 1f);
     Color invalidColor = new Color(0.9f, 0.25f, 0.2f, 1f);
     Color highlightColor = new Color(1f, 0.82f, 0.22f, 1f);
+    readonly TurretRangeRing rangeRing = new TurretRangeRing();
 
     public bool BlocksPlayerLook
     {
@@ -80,6 +83,21 @@ public class TurretPlatformPlacer : MonoBehaviour
         get { return selectedTurret; }
     }
 
+    public TurretPlatform SelectedPlatform
+    {
+        get { return selectedPlatform; }
+    }
+
+    public int PlatformCount
+    {
+        get { return CountPlatforms(); }
+    }
+
+    public int PlatformMaxCount
+    {
+        get { return Mathf.Max(0, platformMaxCount); }
+    }
+
     public IReadOnlyList<StoredTurret> Stored
     {
         get { return storedTurrets; }
@@ -118,6 +136,7 @@ public class TurretPlatformPlacer : MonoBehaviour
     void OnDestroy()
     {
         ClearSelection();
+        rangeRing.Dispose();
 
         if (waveDirector == null)
             return;
@@ -152,11 +171,12 @@ public class TurretPlatformPlacer : MonoBehaviour
 
         if (!ShowBuildUi)
         {
-            if (Dragging || selectedTurret != null)
+            if (Dragging || HasSelection)
             {
                 ClearSelection();
                 CancelPlace();
             }
+            rangeRing.Hide();
             return;
         }
 
@@ -168,7 +188,7 @@ public class TurretPlatformPlacer : MonoBehaviour
                 return;
             }
 
-            if (selectedTurret != null)
+            if (HasSelection)
             {
                 ClearSelection();
                 return;
@@ -178,21 +198,23 @@ public class TurretPlatformPlacer : MonoBehaviour
         if (!Dragging && WasLeftPressed() && !IsPointerOverBuildUi())
             TrySelectClickedTurret();
 
-        if (!Dragging)
-            return;
-
-        if (draggingPlatform)
-            UpdatePlatformGhost();
-        else
-            UpdateTurretGhost();
-
-        if (WasLeftReleased())
+        if (Dragging)
         {
-            if (canPlace)
-                ConfirmPlace();
+            if (draggingPlatform)
+                UpdatePlatformGhost();
             else
-                CancelPlace();
+                UpdateTurretGhost();
+
+            if (WasLeftReleased())
+            {
+                if (canPlace)
+                    ConfirmPlace();
+                else
+                    CancelPlace();
+            }
         }
+
+        TickRangeRing();
     }
 
     public void ToggleBuildMenu()
@@ -225,7 +247,10 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     public void RequestSellSelected()
     {
-        TrySellSelectedTurret();
+        if (selectedTurret != null)
+            TrySellSelectedTurret();
+        else
+            TrySellSelectedPlatform();
     }
 
     public void RequestUpgradeSelected()
@@ -240,7 +265,20 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     public int GetSelectedSellPrice()
     {
-        return GetSellPrice(selectedTurret);
+        if (selectedTurret != null)
+            return GetSellPrice(selectedTurret);
+        if (selectedPlatform != null)
+            return Mathf.Max(0, platformSellPrice);
+        return 0;
+    }
+
+    public Vector3 GetInspectAnchor()
+    {
+        if (selectedTurret != null)
+            return selectedTurret.GetInspectAnchor();
+        if (selectedPlatform != null)
+            return GetPlatformInspectAnchor(selectedPlatform);
+        return Vector3.zero;
     }
 
     public Camera GetHudCamera()
@@ -384,7 +422,8 @@ public class TurretPlatformPlacer : MonoBehaviour
         ghost.transform.position = pos;
         ghost.transform.rotation = Quaternion.identity;
         canPlace = !IsOccupied(pos, ghost.transform.rotation)
-            && CanAfford(GetPlatformCost());
+            && CanAfford(GetPlatformCost())
+            && CountPlatforms() < PlatformMaxCount;
         TintGhost(canPlace ? validColor : invalidColor);
     }
 
@@ -452,7 +491,7 @@ public class TurretPlatformPlacer : MonoBehaviour
         Vector3 pos = ghost.transform.position;
         Quaternion rot = ghost.transform.rotation;
         int cost = GetPlatformCost();
-        if (!TrySpend(cost))
+        if (CountPlatforms() >= PlatformMaxCount || !TrySpend(cost))
         {
             CancelPlace();
             return;
@@ -463,6 +502,7 @@ public class TurretPlatformPlacer : MonoBehaviour
         GameObject placed = Instantiate(platformPrefab, pos, rot);
         if (placed.GetComponent<TurretPlatform>() == null)
             placed.AddComponent<TurretPlatform>();
+        GameSfx.PlayPlatformPlaced();
     }
 
     void ConfirmTurret()
@@ -510,6 +550,54 @@ public class TurretPlatformPlacer : MonoBehaviour
             turret.BeginConstruction(buildTime, IsPrep(), cctv);
     }
 
+    void TickRangeRing()
+    {
+        if (draggingTurret)
+        {
+            float radius = TurretController.PreviewRange(draggingPrefab, pendingTurretUpgradeLevel);
+            if (radius < 0.2f && ghost != null)
+                radius = TurretController.PreviewRange(ghost, pendingTurretUpgradeLevel);
+
+            Vector3 center;
+            if (!TryGetRangeCenter(out center))
+            {
+                rangeRing.Hide();
+                return;
+            }
+
+            Color color = canPlace ? validColor : invalidColor;
+            rangeRing.Show(center, radius, color);
+            return;
+        }
+
+        if (selectedTurret != null)
+        {
+            rangeRing.Show(selectedTurret.transform.position, selectedTurret.range, highlightColor);
+            return;
+        }
+
+        rangeRing.Hide();
+    }
+
+    bool TryGetRangeCenter(out Vector3 center)
+    {
+        center = Vector3.zero;
+        if (ghost != null && ghost.activeSelf)
+        {
+            center = ghost.transform.position;
+            return true;
+        }
+
+        if (IsPointerOverBuildUi())
+            return false;
+
+        if (!TryRaycastGround(out RaycastHit hit, skipPlatforms: false))
+            return false;
+
+        center = hit.point;
+        return true;
+    }
+
     void CancelPlace()
     {
         ClearGhost();
@@ -539,16 +627,24 @@ public class TurretPlatformPlacer : MonoBehaviour
         pendingTurretUpgradeLevel = 1;
     }
 
+    bool HasSelection
+    {
+        get { return selectedTurret != null || selectedPlatform != null; }
+    }
+
     void TrySelectClickedTurret()
     {
-        TurretController turret = FindHoveredTurret();
-        if (turret == null)
+        FindHoveredBuildTarget(out TurretController turret, out TurretPlatform platform);
+        if (turret == null && platform == null)
         {
             ClearSelection();
             return;
         }
 
-        SelectTurret(turret);
+        if (turret != null)
+            SelectTurret(turret);
+        else
+            SelectPlatform(platform);
     }
 
     void SelectTurret(TurretController turret)
@@ -563,26 +659,69 @@ public class TurretPlatformPlacer : MonoBehaviour
         if (platform != null && platform.mountedTurret != null)
             turret = platform.mountedTurret;
 
-        if (selectedTurret == turret)
+        SetSelection(turret, platform);
+    }
+
+    void SelectPlatform(TurretPlatform platform)
+    {
+        if (platform == null)
+        {
+            ClearSelection();
+            return;
+        }
+
+        if (platform.mountedTurret != null)
+        {
+            SelectTurret(platform.mountedTurret);
+            return;
+        }
+
+        SetSelection(null, platform);
+    }
+
+    void SetSelection(TurretController turret, TurretPlatform platform)
+    {
+        if (selectedTurret == turret && selectedPlatform == platform)
             return;
 
         ClearHighlight();
         selectedTurret = turret;
-        ApplyHighlight(selectedTurret);
+        selectedPlatform = platform;
+        if (turret != null && platform != null)
+            ApplyHighlight(turret.transform, platform.transform);
+        else if (turret != null)
+            ApplyHighlight(turret.transform);
+        else if (platform != null)
+            ApplyHighlight(platform.transform);
     }
 
     void ClearSelection()
     {
         ClearHighlight();
         selectedTurret = null;
+        selectedPlatform = null;
     }
 
-    void ApplyHighlight(TurretController turret)
+    void ApplyHighlight(params Transform[] roots)
     {
-        if (turret == null)
+        List<Renderer> renderers = new List<Renderer>();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            if (roots[i] == null)
+                continue;
+
+            Renderer[] found = roots[i].GetComponentsInChildren<Renderer>();
+            for (int r = 0; r < found.Length; r++)
+            {
+                if (found[r] != null && !renderers.Contains(found[r]))
+                    renderers.Add(found[r]);
+            }
+        }
+
+        if (renderers.Count == 0)
             return;
 
-        highlightRenderers = turret.GetComponentsInChildren<Renderer>();
+        highlightRenderers = renderers.ToArray();
         highlightOriginalColors = new Color[highlightRenderers.Length][];
         for (int i = 0; i < highlightRenderers.Length; i++)
         {
@@ -667,6 +806,20 @@ public class TurretPlatformPlacer : MonoBehaviour
         RemoveMountedTurret(turret, platform);
     }
 
+    void TrySellSelectedPlatform()
+    {
+        TurretPlatform platform = selectedPlatform;
+        if (platform == null || platform.mountedTurret != null)
+            return;
+
+        int refund = Mathf.Max(0, platformSellPrice);
+        if (waveDirector != null && refund > 0)
+            waveDirector.AddFunds(refund);
+
+        ClearSelection();
+        Destroy(platform.gameObject);
+    }
+
     void TryStoreSelectedTurret()
     {
         TurretController turret = selectedTurret;
@@ -710,6 +863,7 @@ public class TurretPlatformPlacer : MonoBehaviour
         while (instance.parent != null && instance.parent != platform.transform)
             instance = instance.parent;
 
+        turret.PlayDismantleSfx();
         ClearSelection();
         Destroy(instance.gameObject);
         platform.Mount(null);
@@ -847,11 +1001,13 @@ public class TurretPlatformPlacer : MonoBehaviour
         return null;
     }
 
-    TurretController FindHoveredTurret()
+    void FindHoveredBuildTarget(out TurretController turret, out TurretPlatform platform)
     {
+        turret = null;
+        platform = null;
         Camera camera = GetPlaceCamera();
         if (camera == null)
-            return null;
+            return;
 
         Ray ray = camera.ScreenPointToRay(GetMouseScreenPosition());
         RaycastHit[] hits = Physics.RaycastAll(
@@ -868,21 +1024,34 @@ public class TurretPlatformPlacer : MonoBehaviour
             if (collider == null)
                 continue;
 
-            TurretController turret = collider.GetComponentInParent<TurretController>();
+            turret = collider.GetComponentInParent<TurretController>();
+            platform = collider.GetComponentInParent<TurretPlatform>();
             if (turret != null)
-                return turret;
+            {
+                if (platform == null)
+                    platform = turret.GetComponentInParent<TurretPlatform>();
+                return;
+            }
 
-            TurretPlatform platform = collider.GetComponentInParent<TurretPlatform>();
-            if (platform != null && platform.mountedTurret != null)
-                return platform.mountedTurret;
+            if (platform != null)
+            {
+                turret = platform.mountedTurret;
+                return;
+            }
         }
+    }
 
-        return null;
+    static Vector3 GetPlatformInspectAnchor(TurretPlatform platform)
+    {
+        Collider col = platform.GetComponent<Collider>();
+        if (col != null)
+            return col.bounds.center + Vector3.up * (col.bounds.extents.y + 0.35f);
+        return platform.transform.position + Vector3.up * 1.2f;
     }
 
     int GetPlatformCost()
     {
-        return platformBaseCost + platformCostIncrease * CountPlatforms();
+        return Mathf.Max(0, platformBaseCost);
     }
 
     int CountPlatforms()

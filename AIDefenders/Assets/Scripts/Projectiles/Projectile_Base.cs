@@ -3,6 +3,7 @@ using UnityEngine;
 public abstract class Projectile_Base : MonoBehaviour
 {
     public float damage;
+    public float armorPierce = 3f;
 
     protected Vector3 velocity;
     protected float gravity;
@@ -10,6 +11,7 @@ public abstract class Projectile_Base : MonoBehaviour
     protected Transform ignoreRoot;
     protected bool spent;
     protected bool armed;
+    protected TurretController sourceTurret;
 
     float age;
 
@@ -31,12 +33,14 @@ public abstract class Projectile_Base : MonoBehaviour
         float gravityValue,
         float life,
         float damageValue,
-        Transform ignore = null)
+        Transform ignore = null,
+        float armorPierceValue = 3f)
     {
         velocity = initialVelocity;
         gravity = gravityValue;
         lifetime = life > 0f ? life : 5f;
         damage = damageValue;
+        armorPierce = armorPierceValue;
         ignoreRoot = ignore;
         age = 0f;
         spent = false;
@@ -142,8 +146,8 @@ public abstract class Projectile_Base : MonoBehaviour
 
     protected virtual void OnHitTarget(Target_Base target, Vector3 point)
     {
-        if (damage > 0.01f && target != null)
-            target.TakeDamage(damage);
+        if (target != null)
+            target.TakeDamage(damage, armorPierce, TurretResearch.WeakspotBonus(sourceTurret, target), sourceTurret);
     }
 
     protected virtual void OnHitWorld(Vector3 point)

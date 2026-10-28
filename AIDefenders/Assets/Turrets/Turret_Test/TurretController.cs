@@ -9,13 +9,24 @@ public class TurretController : MonoBehaviour
     public float rotationSpeed = 5f;
     public float fireAngleThreshold = 3f;
     public float range = 15f;
+    public float armorPierce = 1f;
     public float commandTimeout = 1.5f;
     public float friendlyBlockRadius = 0.35f;
     public int sellPrice;
     public string displayName;
+    public string researchGroup;
     public int upgradeLevel = 1;
     public GameObject sourcePrefab;
     public TurretUpgradeTier[] upgradeTiers;
+
+    [Header("Sfx")]
+    public SfxEvent constructStart;
+    public SfxEvent constructComplete;
+    public SfxEvent upgradeStart;
+    public SfxEvent upgradeComplete;
+    public SfxEvent fire;
+    public SfxEvent reload;
+    public SfxEvent dismantle;
 
     Transform aimPivot;
     Transform currentTarget;
@@ -34,6 +45,11 @@ public class TurretController : MonoBehaviour
     float upgradeDuration;
     Vector3 builtLocalPosition;
     Vector3 buriedLocalPosition;
+
+    public CCTVController AssignedCctv
+    {
+        get { return assignedCctv; }
+    }
 
     public bool IsReady
     {
@@ -115,6 +131,24 @@ public class TurretController : MonoBehaviour
         return IsReady && upgradeLevel < MaxLevel;
     }
 
+    public float RangeAtLevel(int level)
+    {
+        TurretUpgradeTier tier = GetTier(level);
+        if (tier != null && tier.range > 0f)
+            return tier.range;
+        return range;
+    }
+
+    public static float PreviewRange(GameObject prefab, int level)
+    {
+        if (prefab == null)
+            return 0f;
+        TurretController turret = prefab.GetComponentInChildren<TurretController>(true);
+        if (turret == null)
+            return 0f;
+        return turret.RangeAtLevel(level) + TurretResearch.RangeBonus(turret);
+    }
+
     public int NextUpgradeCost()
     {
         TurretUpgradeTier next = GetTier(upgradeLevel + 1);
@@ -161,6 +195,7 @@ public class TurretController : MonoBehaviour
         constructElapsed = 0f;
         constructDuration = duration;
         transform.localPosition = buriedLocalPosition;
+        PlaySfx(constructStart);
     }
 
     public void BeginUpgrade(bool instant)
@@ -169,7 +204,7 @@ public class TurretController : MonoBehaviour
             return;
 
         desiredLevel = Mathf.Min(upgradeLevel + 1, MaxLevel);
-        ContinueTowardDesired(instant);
+        ContinueTowardDesired(instant, false);
     }
 
     public void SetTarget(Transform target, Vector3 aimPoint)
@@ -415,14 +450,14 @@ public class TurretController : MonoBehaviour
         if (assignedCctv != null)
             assignedCctv.RegisterTurret(this);
 
-        ContinueTowardDesired(constructionInstant);
+        ContinueTowardDesired(constructionInstant, true);
     }
 
-    void ContinueTowardDesired(bool instant)
+    void ContinueTowardDesired(bool instant, bool fromConstruction)
     {
         if (upgradeLevel >= desiredLevel)
         {
-            SetFullyReady();
+            SetFullyReady(fromConstruction);
             return;
         }
 
@@ -430,7 +465,7 @@ public class TurretController : MonoBehaviour
         {
             while (upgradeLevel < desiredLevel)
                 AdvanceLevel();
-            SetFullyReady();
+            SetFullyReady(fromConstruction);
             return;
         }
 
@@ -441,7 +476,7 @@ public class TurretController : MonoBehaviour
     {
         if (upgradeLevel >= desiredLevel || upgradeLevel >= MaxLevel)
         {
-            SetFullyReady();
+            SetFullyReady(false);
             return;
         }
 
@@ -453,7 +488,12 @@ public class TurretController : MonoBehaviour
         ClearTarget();
 
         if (upgradeDuration <= 0.01f)
+        {
             FinishUpgradeWork();
+            return;
+        }
+
+        PlaySfx(upgradeStart);
     }
 
     void FinishUpgradeWork()
@@ -462,7 +502,7 @@ public class TurretController : MonoBehaviour
         if (upgradeLevel < desiredLevel)
             StartUpgradeWork();
         else
-            SetFullyReady();
+            SetFullyReady(false);
     }
 
     void AdvanceLevel()
@@ -471,12 +511,34 @@ public class TurretController : MonoBehaviour
         ApplyCurrentTier();
     }
 
-    void SetFullyReady()
+    void SetFullyReady(bool fromConstruction)
     {
         constructing = false;
         upgrading = false;
         ready = true;
         ApplyCurrentTier();
+        PlaySfx(fromConstruction ? constructComplete : upgradeComplete);
+    }
+
+    public void PlayFireSfx()
+    {
+        Vector3 pos = firePoint != null ? firePoint.position : transform.position;
+        GameSfx.PlayWorld(fire, pos);
+    }
+
+    public void PlayReloadSfx()
+    {
+        PlaySfx(reload);
+    }
+
+    public void PlayDismantleSfx()
+    {
+        PlaySfx(dismantle);
+    }
+
+    void PlaySfx(SfxEvent sfx)
+    {
+        GameSfx.PlayWorld(sfx, transform.position);
     }
 
     void ApplyCurrentTier()
@@ -499,7 +561,8 @@ public class TurretController : MonoBehaviour
 
         if (tier != null)
         {
-            range = tier.range > 0f ? tier.range : range;
+            range = (tier.range > 0f ? tier.range : range) + TurretResearch.RangeBonus(this);
+            armorPierce = tier.armorPierce + TurretResearch.ArmorPierceBonus(this);
             aimPivot = ResolveBarrel(tier, visible);
             if (tier.firePoint != null)
                 firePoint = tier.firePoint;

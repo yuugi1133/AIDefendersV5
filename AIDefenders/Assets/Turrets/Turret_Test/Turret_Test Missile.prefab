@@ -847,11 +847,19 @@ MonoBehaviour:
   rotationSpeed: 5
   fireAngleThreshold: 20
   range: 30
+  armorPierce: 0.9
   commandTimeout: 1.5
   sellPrice: 60
   displayName: 
   upgradeLevel: 1
   sourcePrefab: {fileID: 0}
+  constructStart: {fileID: 11400000, guid: c13d4e5f6a7041b2c8d9e0f1a2b3c4d5, type: 2}
+  constructComplete: {fileID: 11400000, guid: d24e5f6a7b8142c3d9e0f1a2b3c4d5e6, type: 2}
+  upgradeStart: {fileID: 11400000, guid: e35f6a7b8c9243d0e1f2a3b4c5d6e7f8, type: 2}
+  upgradeComplete: {fileID: 11400000, guid: f46a7b8c9da354e1f2a3b4c5d6e7f809, type: 2}
+  fire: {fileID: 11400000, guid: 057b8c9dae1465f2a3b4c5d6e7f8091d, type: 2}
+  reload: {fileID: 11400000, guid: 168c9daebf257603b4c5d6e7f8091a2b, type: 2}
+  dismantle: {fileID: 11400000, guid: 279daebfc0368714c5d6e7f8091a2b3c, type: 2}
   upgradeTiers:
   - label: "1\uB2E8\uACC4"
     visualRoot: {fileID: 4510906000387928940}
@@ -862,6 +870,7 @@ MonoBehaviour:
     maxAmmo: 10
     reloadTime: 2
     range: 30
+    armorPierce: 0.9
     upgradeCost: 0
     upgradeTime: 0
   - label: "2\uB2E8\uACC4"
@@ -873,6 +882,7 @@ MonoBehaviour:
     maxAmmo: 12
     reloadTime: 2
     range: 36
+    armorPierce: 1.3
     upgradeCost: 70
     upgradeTime: 5
   - label: "3\uB2E8\uACC4"
@@ -884,5 +894,6 @@ MonoBehaviour:
     maxAmmo: 16
     reloadTime: 1.8
     range: 42
+    armorPierce: 1.8
     upgradeCost: 110
     upgradeTime: 7

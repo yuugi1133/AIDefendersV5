@@ -6,7 +6,6 @@ public class Target_Enemy : Target_Base
     [Header("Enemy Reward")]
     [FormerlySerializedAs("killReward")]
     public int killFunds = 10;
-    public int killScore = 10;
 
     [Header("Base")]
     public float baseDamage = 1f;
@@ -16,8 +15,13 @@ public class Target_Enemy : Target_Base
         if (director == null)
             return;
 
+        int score = ResolveIdentifyScore(true);
         director.AddFunds(killFunds);
-        director.AddScore(killScore);
+        director.AddScore(score);
+        director.RegisterTargetOutcome(this, true);
+        Vector3 popup = GetPopupWorld();
+        HudFx.ShowFunds(popup, killFunds);
+        HudFx.ShowScore(popup, score);
     }
 
     protected override void OnReachedGoal(WaveDirector director)
@@ -25,6 +29,7 @@ public class Target_Enemy : Target_Base
         if (director == null)
             return;
 
+        director.RegisterTargetOutcome(this, false);
         director.DamageBase(baseDamage);
     }
 }

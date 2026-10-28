@@ -110,10 +110,15 @@ public class HudModelSelectUi
         errorRt.sizeDelta = new Vector2(0f, 28f);
 
         applyButton = CreateBottomButton(selectRt, "Apply", "적용하고 서버 시작", 0f, 0.62f, 0f, -6f);
-        applyButton.onClick.AddListener(() => gameManager.ApplySelectedModel());
+        applyButton.onClick.AddListener(() =>
+        {
+            GameSfx.PlayUiClick();
+            gameManager.ApplySelectedModel();
+        });
         Button refresh = CreateBottomButton(selectRt, "Refresh", "목록 새로고침", 0.62f, 1f, 6f, 0f);
         refresh.onClick.AddListener(() =>
         {
+            GameSfx.PlayUiClick();
             gameManager.RefreshTrainedModels();
             lastCount = -1;
         });
@@ -233,7 +238,11 @@ public class HudModelSelectUi
             Button button = row.gameObject.AddComponent<Button>();
             button.targetGraphic = row;
             int index = i;
-            button.onClick.AddListener(() => gameManager.SelectModel(index));
+            button.onClick.AddListener(() =>
+            {
+                GameSfx.PlayUiClick();
+                gameManager.SelectModel(index);
+            });
 
             string label = model.DatasetName + "  (" + model.WeightsFile + ")";
             Text text = UiFont.AddText(row.rectTransform, "Label", label, 18, TextAnchor.MiddleLeft, textColor, UiType.BodyMedium);
