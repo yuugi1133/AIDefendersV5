@@ -150,7 +150,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2491801f493b6c4280ebe5b9d50e045, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AIInputCapture
-  cctvCamera: {fileID: 8468680228538072520}
+  cameras:
+  - {fileID: 8468680228538072520}
   renderTexture: {fileID: 8400000, guid: f0bc070327ecff440a999d2c2fa588c4, type: 2}
   CaptureDelay: 0.1
 --- !u!1 &2004038716286148742
@@ -172,6 +173,7 @@ GameObject:
   - component: {fileID: 3588026141842346245}
   - component: {fileID: 3588026141842346246}
   - component: {fileID: 3588026141842346247}
+  - component: {fileID: 3588026141842346248}
   m_Layer: 0
   m_Name: CCTVSystem 1
   m_TagString: MainCamera
@@ -387,7 +389,7 @@ MonoBehaviour:
   equippedSkills:
   - {fileID: 3588026141842346246}
   - {fileID: 3588026141842346247}
-  - {fileID: 0}
+  - {fileID: 3588026141842346248}
   - {fileID: 0}
   crosshairSize: 14
   crosshairThickness: 2
@@ -443,6 +445,26 @@ MonoBehaviour:
   slowDuration: 5
   slowSpeedScale: 0.25
   fireSfx: {fileID: 11400000, guid: 6e7f8091a2b364c5d6e7f8091a2b3c4d, type: 2}
+--- !u!114 &3588026141842346248
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2004038716286148742}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4e5f60718293a4b5c6d7e8f901a2b3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CCTVSkill_DisposableCamera
+  displayName: "\uC77C\uD68C\uC131 \uCE74\uBA54\uB77C"
+  cooldown: 36
+  startCooldownOnUse: 1
+  dronePrefab: {fileID: 5054379811673952670, guid: ebf9a8ee220421d44ae55a29a1352b1a, type: 3}
+  duration: 30
+  spawnForward: 2.4
+  droneScale: 0.4
+  deploySfx: {fileID: 0}
 --- !u!1 &7973859542795067651
 GameObject:
   m_ObjectHideFlags: 0

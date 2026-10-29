@@ -16,6 +16,10 @@ public class Target_Base : MonoBehaviour
 
     public bool isSample = false;
 
+    [Header("Display")]
+    [Tooltip("웨이브 준비 UI와 데이터셋 대상 추가 UI에 쓰는 이름입니다.")]
+    public string displayName = "";
+
     [Header("Score")]
     [FormerlySerializedAs("killScore")]
     [FormerlySerializedAs("passScore")]
@@ -26,22 +30,9 @@ public class Target_Base : MonoBehaviour
     {
         get
         {
-            if (this is Target_Sheep)
-                return "양";
-            if (this is Target_Wolf)
-                return "늑대";
-            if (this is Target_Bear)
-                return "곰";
-            if (this is Target_Dear)
-                return "사슴";
-            if (this is Target_Chicken)
-                return "닭";
-            if (this is Target_Tiger)
-                return "호랑이";
-            if (this is Target_Friendly)
-                return "아군";
-            if (this is Target_Enemy)
-                return "적";
+            if (!string.IsNullOrWhiteSpace(displayName))
+                return displayName.Trim();
+
             return gameObject.name
                 .Replace("Target_Friendly_", "")
                 .Replace("Target_Enemy_", "")
@@ -82,7 +73,7 @@ public class Target_Base : MonoBehaviour
 
     [Header("Components")]
     public Animator animator;
-    public Renderer renderer;
+    public Renderer[] renderers;
     public Rigidbody rigidbody;
 
     [Header("Sfx")]
@@ -101,6 +92,11 @@ public class Target_Base : MonoBehaviour
         get { return statusEffects; }
     }
 
+    void Awake()
+    {
+        CombatCollision.AssignLayer(gameObject, this is Target_Friendly ? "Friendly" : "Enemy");
+    }
+
     void Start()
     {
         currentHP = maxHP;
@@ -112,7 +108,8 @@ public class Target_Base : MonoBehaviour
         if (animator && !isSample)
             animator.SetBool("Move", true);
 
-        SnapToGround();
+        if (StickToGround)
+            SnapToGround();
         vocalTimer = RandomVocalWait();
     }
 
@@ -134,12 +131,108 @@ public class Target_Base : MonoBehaviour
         if (isDead) return;
 
         Move();
-        FollowGround();
+        if (StickToGround)
+            FollowGround();
     }
 
     public Renderer getRenderer()
     {
-        return renderer;
+        Renderer first;
+        if (TryGetFirstBodyRenderer(out first))
+            return first;
+        return null;
+    }
+
+    public bool TryGetRenderBounds(out Bounds bounds)
+    {
+        bounds = default;
+        bool found = false;
+
+        if (HasAssignedRenderers())
+        {
+            for (int i = 0; i < renderers.Length; i++)
+                EncapsulateRenderer(renderers[i], ref bounds, ref found);
+            return found;
+        }
+
+        Renderer[] children = GetComponentsInChildren<Renderer>();
+        for (int i = 0; i < children.Length; i++)
+        {
+            if (!IsBodyRenderer(children[i]))
+                continue;
+            EncapsulateRenderer(children[i], ref bounds, ref found);
+        }
+
+        return found;
+    }
+
+    bool HasAssignedRenderers()
+    {
+        if (renderers == null)
+            return false;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null)
+                return true;
+        }
+
+        return false;
+    }
+
+    bool TryGetFirstBodyRenderer(out Renderer first)
+    {
+        first = null;
+        Bounds bounds;
+        if (!TryGetRenderBounds(out bounds))
+            return false;
+
+        if (HasAssignedRenderers())
+        {
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (IsUsableRenderer(renderers[i]))
+                {
+                    first = renderers[i];
+                    return true;
+                }
+            }
+        }
+
+        Renderer[] children = GetComponentsInChildren<Renderer>();
+        for (int i = 0; i < children.Length; i++)
+        {
+            if (!IsBodyRenderer(children[i]) || !IsUsableRenderer(children[i]))
+                continue;
+            first = children[i];
+            return true;
+        }
+
+        return false;
+    }
+
+    static void EncapsulateRenderer(Renderer mesh, ref Bounds bounds, ref bool found)
+    {
+        if (!IsUsableRenderer(mesh))
+            return;
+
+        if (!found)
+        {
+            bounds = mesh.bounds;
+            found = true;
+            return;
+        }
+
+        bounds.Encapsulate(mesh.bounds);
+    }
+
+    static bool IsUsableRenderer(Renderer mesh)
+    {
+        return mesh != null && mesh.enabled && mesh.gameObject.activeInHierarchy;
+    }
+
+    static bool IsBodyRenderer(Renderer mesh)
+    {
+        return mesh is MeshRenderer || mesh is SkinnedMeshRenderer;
     }
 
     public Vector3 GetAimPoint(Vector3 from)
@@ -152,8 +245,9 @@ public class Target_Base : MonoBehaviour
             return closest;
         }
 
-        if (renderer != null)
-            return renderer.bounds.center;
+        Bounds bounds;
+        if (TryGetRenderBounds(out bounds))
+            return bounds.center;
 
         return transform.position + Vector3.up * 0.9f;
     }
@@ -526,10 +620,10 @@ public class Target_Base : MonoBehaviour
 
     public Vector3 GetPopupWorld()
     {
-        Vector3 world = transform.position + Vector3.up * 1.4f;
-        if (renderer != null)
-            world = renderer.bounds.center + Vector3.up * (renderer.bounds.extents.y + 0.2f);
-        return world;
+        Bounds bounds;
+        if (TryGetRenderBounds(out bounds))
+            return bounds.center + Vector3.up * (bounds.extents.y + 0.2f);
+        return transform.position + Vector3.up * 1.4f;
     }
 
     protected virtual void Die()
@@ -545,7 +639,7 @@ public class Target_Base : MonoBehaviour
         OnKilled(FindWaveDirector());
         PlaySfx(death);
 
-        if (animator)
+        if (PlayAnimatorDeath && animator)
         {
             animator.SetBool("Move", false);
             animator.ResetTrigger("Die");
@@ -554,6 +648,16 @@ public class Target_Base : MonoBehaviour
         }
 
         StartCoroutine(DeathRoutine());
+    }
+
+    protected virtual bool PlayAnimatorDeath
+    {
+        get { return true; }
+    }
+
+    protected virtual bool StickToGround
+    {
+        get { return true; }
     }
 
     protected virtual void OnKilled(WaveDirector director)
@@ -683,7 +787,7 @@ public class Target_Base : MonoBehaviour
         GameSfx.PlayWorld(sfx, transform.position);
     }
 
-    IEnumerator DeathRoutine()
+    protected virtual IEnumerator DeathRoutine()
     {
         yield return new WaitForSeconds(destroyDelay);
 

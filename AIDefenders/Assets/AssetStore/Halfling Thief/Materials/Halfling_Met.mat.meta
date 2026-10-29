@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b8e180390a9e86d41b8fdf3fd826872d
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 365742
+  packageName: Halfling Thief
+  packageVersion: 1.0
+  assetPath: Assets/Halfling Thief/Materials/Halfling_Met.mat
+  uploadId: 874266

@@ -287,8 +287,7 @@ public class HudBuildUi
         if (platformRow == null)
             return;
 
-        bool prep = placer.IsPrepPhase;
-        platformRow.SetActive(prep && placer.HasPlatformPrefab);
+        platformRow.SetActive(placer.HasPlatformPrefab);
         if (!platformRow.activeSelf)
             return;
 

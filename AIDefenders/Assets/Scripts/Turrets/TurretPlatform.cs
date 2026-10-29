@@ -6,6 +6,11 @@ public class TurretPlatform : MonoBehaviour
     public TurretController mountedTurret;
     public Vector3 mountOffset = Vector3.zero;
 
+    void Awake()
+    {
+        CombatCollision.AssignLayer(gameObject, "Turret");
+    }
+
     public bool IsEmpty
     {
         get { return mountedTurret == null && !occupied; }

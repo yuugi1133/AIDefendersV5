@@ -1241,6 +1241,7 @@ MonoBehaviour:
   moveSpeed: 10
   armorValue: 0.3
   isSample: 0
+  displayName: "\uC6B0\uB450\uBA38\uB9AC \uB291\uB300"
   scoreCoefficient: 15
   destination: {fileID: 0}
   waypointRadius: 1.2
@@ -1257,7 +1258,8 @@ MonoBehaviour:
   sinkSpeed: 1
   destroyDelay: 3
   animator: {fileID: 4665554691871557518}
-  renderer: {fileID: 393502265896259782}
+  renderers:
+  - {fileID: 393502265896259782}
   rigidbody: {fileID: 4344226870335729210}
   footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e901, type: 2}
   vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e902, type: 2}

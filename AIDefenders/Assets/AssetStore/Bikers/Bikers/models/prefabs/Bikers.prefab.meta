@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 4cdeaa201dc1e254c979bb3f2784a4ca
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 55742
+  packageName: Bikers
+  packageVersion: 1.0
+  assetPath: Assets/Bikers/Bikers/models/prefabs/Bikers.prefab
+  uploadId: 634009

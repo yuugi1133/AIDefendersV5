@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: de3d697001ef2684a8349e1b2e50d695
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 112000000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 55742
+  packageName: Bikers
+  packageVersion: 1.0
+  assetPath: Assets/Bikers/Bikers/scenes/bikers/LightingData.asset
+  uploadId: 634009

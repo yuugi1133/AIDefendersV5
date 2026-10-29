@@ -1274,7 +1274,8 @@ MonoBehaviour:
   sinkSpeed: 1
   destroyDelay: 3
   animator: {fileID: 8881504610387854120}
-  renderer: {fileID: 4349140359847211452}
+  renderers:
+  - {fileID: 4349140359847211452}
   isDead: 0
   footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e90d, type: 2}
   vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e90e, type: 2}

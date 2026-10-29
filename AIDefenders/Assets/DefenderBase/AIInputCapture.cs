@@ -1,12 +1,13 @@
 using UnityEngine;
-using System;
-using System.IO;
+using UnityEngine.Serialization;
 using UnityEngine.Networking;
+using System;
 using System.Collections;
 
 public class AIInputCapture : MonoBehaviour
 {
-    public Camera cctvCamera;
+    [FormerlySerializedAs("cctvCamera")]
+    public Camera[] cameras;
     public RenderTexture renderTexture;
 
     public float CaptureDelay = 0.1f;
@@ -15,84 +16,119 @@ public class AIInputCapture : MonoBehaviour
     public bool logInferenceTime = true;
 
     Texture2D screenTexture;
+    int nextIndex;
 
+    public Action<DetectionResponse, Camera> OnDetectionReceived;
 
-    public Action<DetectionResponse> OnDetectionReceived; //�̺�Ʈ:
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    void Awake()
     {
-        InvokeRepeating(nameof(CaptureAndSend), 0f, CaptureDelay);
-
-        screenTexture = new Texture2D(
-            renderTexture.width,
-            renderTexture.height,
-            TextureFormat.RGB24,
-            false
-        );
+        EnsureLegacyCamera();
     }
 
-    // Update is called once per frame
-    void Update()
+    void Start()
     {
-        //if (Input.GetKeyDown(KeyCode.P))
-        //{
-        //    CaptureImage();
-        //}
+        EnsureLegacyCamera();
+        InvokeRepeating(nameof(CaptureAndSend), 0f, CaptureDelay);
+
+        if (renderTexture != null)
+        {
+            screenTexture = new Texture2D(
+                renderTexture.width,
+                renderTexture.height,
+                TextureFormat.RGB24,
+                false
+            );
+        }
+    }
+
+    public void RegisterCamera(Camera camera)
+    {
+        if (camera == null)
+            return;
+
+        EnsureLegacyCamera();
+        if (cameras == null)
+            cameras = Array.Empty<Camera>();
+
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            if (cameras[i] == camera)
+                return;
+        }
+
+        Array.Resize(ref cameras, cameras.Length + 1);
+        cameras[cameras.Length - 1] = camera;
+    }
+
+    public void UnregisterCamera(Camera camera)
+    {
+        if (camera == null || cameras == null || cameras.Length == 0)
+            return;
+
+        int write = 0;
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            if (cameras[i] == null || cameras[i] == camera)
+                continue;
+
+            cameras[write] = cameras[i];
+            write++;
+        }
+
+        if (write == cameras.Length)
+            return;
+
+        Array.Resize(ref cameras, write);
+        if (write > 0)
+            nextIndex %= write;
+        else
+            nextIndex = 0;
     }
 
     void CaptureAndSend()
     {
+        if (renderTexture == null)
+            return;
+
+        Camera camera = NextCamera();
+        if (camera == null)
+            return;
+
+        if (screenTexture == null)
+        {
+            screenTexture = new Texture2D(
+                renderTexture.width,
+                renderTexture.height,
+                TextureFormat.RGB24,
+                false
+            );
+        }
+
+        RenderTexture previousTarget = camera.targetTexture;
+        bool wasEnabled = camera.enabled;
+        camera.enabled = true;
+        camera.targetTexture = renderTexture;
+        camera.Render();
+
         RenderTexture currentRT = RenderTexture.active;
-
         RenderTexture.active = renderTexture;
-
-        cctvCamera.Render();
-
         screenTexture.ReadPixels(
             new Rect(0, 0, renderTexture.width, renderTexture.height),
             0,
             0
         );
-
         screenTexture.Apply();
-
         RenderTexture.active = currentRT;
+        camera.targetTexture = previousTarget;
+        camera.enabled = wasEnabled;
 
         byte[] bytes = screenTexture.EncodeToJPG(70);
-
-        StartCoroutine(SendImage(bytes));
+        StartCoroutine(SendImage(bytes, camera));
     }
 
-    /*
-    public void CaptureImage()
-    {
-        RenderTexture currentRT = RenderTexture.active;
-
-        RenderTexture.active = renderTexture;
-
-        cctvCamera.Render();
-
-        screenTexture.ReadPixels(
-            new Rect(0, 0, renderTexture.width, renderTexture.height),
-            0,
-            0
-        );
-
-        screenTexture.Apply();
-
-        RenderTexture.active = currentRT;
-
-        byte[] bytes = screenTexture.EncodeToPNG();
-
-        StartCoroutine(SendImage(bytes));
-    }
-    */
-
-    IEnumerator SendImage(byte[] imageBytes)
+    IEnumerator SendImage(byte[] imageBytes, Camera sourceCamera)
     {
         WWWForm form = new WWWForm();
-
         form.AddBinaryData(
             "file",
             imageBytes,
@@ -100,11 +136,10 @@ public class AIInputCapture : MonoBehaviour
             "image/png"
         );
 
-        UnityWebRequest www =
-            UnityWebRequest.Post(
-                "http://127.0.0.1:8000/upload",
-                form
-            );
+        UnityWebRequest www = UnityWebRequest.Post(
+            "http://127.0.0.1:8000/upload",
+            form
+        );
 
         float sentAt = Time.realtimeSinceStartup;
         yield return www.SendWebRequest();
@@ -120,28 +155,45 @@ public class AIInputCapture : MonoBehaviour
 
         if (www.result == UnityWebRequest.Result.Success)
         {
-            string json = www.downloadHandler.text;     
-            Debug.Log(json);    //json ��� ���
-
+            string json = www.downloadHandler.text;
             DetectionResponse response = JsonUtility.FromJson<DetectionResponse>(json);
             if (response != null)
-            {
-                foreach (var detection in response.detections)
-                {
-                    Debug.Log(
-                        $"Class:{detection.class_id} " +
-                        $"Conf:{detection.confidence:F2} " +
-                        $"Center:({detection.center_x:F0}, {detection.center_y:F0})"
-                    );
-                }
-
-                OnDetectionReceived?.Invoke(response);
-            }
+                OnDetectionReceived?.Invoke(response, sourceCamera);
         }
         else if (!logInferenceTime)
         {
             Debug.LogError(www.error);
         }
+    }
+
+    Camera NextCamera()
+    {
+        if (cameras == null || cameras.Length == 0)
+            return null;
+
+        int count = cameras.Length;
+        for (int i = 0; i < count; i++)
+        {
+            int index = (nextIndex + i) % count;
+            Camera camera = cameras[index];
+            if (camera == null || !camera.gameObject.activeInHierarchy)
+                continue;
+
+            nextIndex = (index + 1) % count;
+            return camera;
+        }
+
+        return null;
+    }
+
+    void EnsureLegacyCamera()
+    {
+        if (cameras != null && cameras.Length > 0)
+            return;
+
+        Camera self = GetComponent<Camera>();
+        if (self != null)
+            cameras = new[] { self };
     }
 }
 

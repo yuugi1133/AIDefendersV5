@@ -166,9 +166,6 @@ public class TurretPlatformPlacer : MonoBehaviour
 
         HandleCombatBuildToggle();
 
-        if (!IsPrep() && draggingPlatform)
-            CancelPlace();
-
         if (!ShowBuildUi)
         {
             if (Dragging || HasSelection)
@@ -320,7 +317,7 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     void BeginPlatformPlace()
     {
-        if (!IsPrep())
+        if (!ShowBuildUi)
             return;
 
         ClearSelection();

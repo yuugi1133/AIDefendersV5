@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6725783078546632947}
   - component: {fileID: 8467303101361605049}
   - component: {fileID: 4946181017998978349}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: default
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -108,7 +108,7 @@ GameObject:
   - component: {fileID: 6135868765156917675}
   - component: {fileID: 7301328027502447913}
   - component: {fileID: 8477240151206057528}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: TurretPlatform
   m_TagString: Untagged
   m_Icon: {fileID: 0}

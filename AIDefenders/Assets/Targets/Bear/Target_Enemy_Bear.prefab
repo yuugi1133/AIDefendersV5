@@ -30,7 +30,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.007792039, y: 0.00000020538101, z: 0.1146656}
-  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 8592823090782237243}
@@ -124,20 +124,35 @@ MonoBehaviour:
   maxHP: 100
   currentHP: 0
   moveSpeed: 5
-  isSample: 0
-  scoreCoefficient: 10
   armorValue: 2
+  isSample: 0
+  displayName: "\uACF0"
+  scoreCoefficient: 10
+  destination: {fileID: 0}
+  waypointRadius: 1.8
+  arriveDistance: 2.2
+  turnSpeed: 8
+  waypointSkipTime: 2.5
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 0
+  groundRayHeight: 5
+  groundHeightOffset: 0.05
+  maxGroundDistance: 20
   isDead: 0
   sinkSpeed: 1
   destroyDelay: 3
   animator: {fileID: 6732651187374356703}
-  renderer: {fileID: 6576720895163708352}
+  renderers:
+  - {fileID: 6576720895163708352}
   rigidbody: {fileID: 0}
   footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e907, type: 2}
   vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e908, type: 2}
   death: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e909, type: 2}
   footstepInterval: 0.55
   vocalInterval: {x: 5, y: 13}
+  killFunds: 10
+  baseDamage: 1
 --- !u!1 &123067631597614405
 GameObject:
   m_ObjectHideFlags: 0
@@ -1883,8 +1898,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 2.7, y: 2.7, z: 2.7}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 3829666461841068283}
   m_Father: {fileID: 832886938333782693}

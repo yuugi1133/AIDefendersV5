@@ -1019,6 +1019,7 @@ MonoBehaviour:
   moveSpeed: 10
   armorValue: 0.7
   isSample: 0
+  displayName: "\uD638\uB791\uC774"
   scoreCoefficient: 10
   destination: {fileID: 0}
   waypointRadius: 1.8
@@ -1035,7 +1036,8 @@ MonoBehaviour:
   sinkSpeed: 1
   destroyDelay: 3
   animator: {fileID: 2549186943041040663}
-  renderer: {fileID: 4601342960021497504}
+  renderers:
+  - {fileID: 4601342960021497504}
   rigidbody: {fileID: 6685514216488005920}
   footstep: {fileID: 0}
   vocal: {fileID: 0}

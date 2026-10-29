@@ -34,15 +34,31 @@ public class YoloTargetMarker : MonoBehaviour
 
     public bool TryGetWorldBounds(out Bounds bounds)
     {
+        if (target != null && target.TryGetRenderBounds(out bounds))
+            return true;
+
         bounds = default;
-        Renderer mesh = target != null ? target.getRenderer() : null;
-        if (mesh == null)
-            mesh = GetComponentInChildren<Renderer>();
+        Renderer[] children = GetComponentsInChildren<Renderer>();
+        bool found = false;
+        for (int i = 0; i < children.Length; i++)
+        {
+            Renderer mesh = children[i];
+            if (mesh == null || !mesh.enabled)
+                continue;
+            if (!(mesh is MeshRenderer) && !(mesh is SkinnedMeshRenderer))
+                continue;
 
-        if (mesh == null)
-            return false;
+            if (!found)
+            {
+                bounds = mesh.bounds;
+                found = true;
+            }
+            else
+            {
+                bounds.Encapsulate(mesh.bounds);
+            }
+        }
 
-        bounds = mesh.bounds;
-        return true;
+        return found;
     }
 }

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 9ec2f34c12be86e44ad6a21d92b94f80
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 55742
+  packageName: Bikers
+  packageVersion: 1.0
+  assetPath: Assets/Bikers/Bikers/models/Materials/biker_4.mat
+  uploadId: 634009

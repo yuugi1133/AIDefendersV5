@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a583456a9e214c84780a0c69cf482079
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 4890085278179872738
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 365742
+  packageName: Halfling Thief
+  packageVersion: 1.0
+  assetPath: Assets/Halfling Thief/Scenes/Demo_CharacterSettings.lighting
+  uploadId: 874266

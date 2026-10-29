@@ -85,6 +85,8 @@ public class TurretController : MonoBehaviour
 
     void Awake()
     {
+        CombatCollision.AssignLayer(gameObject, "Turret");
+
         if (weapon == null)
             weapon = GetComponent<WeaponSystem>();
 

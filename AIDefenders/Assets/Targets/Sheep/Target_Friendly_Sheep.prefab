@@ -2041,6 +2041,7 @@ MonoBehaviour:
   currentHP: 0
   moveSpeed: 13
   isSample: 0
+  displayName: "\uC591"
   scoreCoefficient: 10
   armorValue: 0
   destination: {fileID: 0}
@@ -2058,7 +2059,8 @@ MonoBehaviour:
   sinkSpeed: 1
   destroyDelay: 3
   animator: {fileID: 7813483395373265383}
-  renderer: {fileID: 6583838070748603911}
+  renderers:
+  - {fileID: 6583838070748603911}
   rigidbody: {fileID: 2690547256486256024}
   footstep: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e904, type: 2}
   vocal: {fileID: 11400000, guid: b01c2d3e4f5061728394a5b6c7d8e905, type: 2}

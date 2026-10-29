@@ -188,26 +188,36 @@ public class CCTVController : MonoBehaviour
     }
 
     // YOLO 탐지 결과를 태그 정답이 아니라 모델 판단으로 적/아군 리스트에 넣는다.
-    private void HandleDetections(DetectionResponse response)
+    private void HandleDetections(DetectionResponse response, Camera sourceCamera)
     {
         if (response == null || response.detections == null)
             return;
+
+        Camera camera = sourceCamera != null ? sourceCamera : cctvCamera;
+        RenderTexture rt = camera != null ? camera.targetTexture : null;
+        if (rt == null && aiInput != null)
+            rt = aiInput.renderTexture;
+
+        float imageWidth = rt != null ? rt.width : (camera != null ? camera.pixelWidth : 0f);
+        float imageHeight = rt != null ? rt.height : (camera != null ? camera.pixelHeight : 0f);
+        if (camera == null || imageWidth < 1f || imageHeight < 1f)
+            return;
+
+        RenderTexture previousTarget = camera.targetTexture;
+        if (rt != null)
+            camera.targetTexture = rt;
 
         foreach (var detection in response.detections)
         {
             if (detection.confidence < minConfidence)
                 continue;
 
-            if (cctvCamera == null)
-                continue;
-
-            Vector2 screenPos = new Vector2(
-                    detection.center_x,
-                    cctvCamera.pixelHeight
-                    - detection.center_y
-                );
-
-            Ray ray = cctvCamera.ScreenPointToRay(screenPos);
+            Vector3 viewport = new Vector3(
+                detection.center_x / imageWidth,
+                1f - detection.center_y / imageHeight,
+                0f
+            );
+            Ray ray = camera.ViewportPointToRay(viewport);
             Debug.DrawRay(ray.origin, ray.direction * 1000f, Color.red, 1f);
 
             if (!TryFindTargetAlongRay(ray, out Target_Base targetbase, out Transform target))
@@ -219,6 +229,9 @@ public class CCTVController : MonoBehaviour
 
             UpsertTrack(targetbase, asEnemy, detection.confidence);
         }
+
+        if (camera != null)
+            camera.targetTexture = previousTarget;
 
         PruneDeadTracks();
         RebuildLists();

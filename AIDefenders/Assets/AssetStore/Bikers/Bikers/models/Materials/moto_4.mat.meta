@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 31134d97323c6bf4f8793f72d4337957
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 55742
+  packageName: Bikers
+  packageVersion: 1.0
+  assetPath: Assets/Bikers/Bikers/models/Materials/moto_4.mat
+  uploadId: 634009

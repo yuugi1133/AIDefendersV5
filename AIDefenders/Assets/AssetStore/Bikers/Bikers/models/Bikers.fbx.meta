@@ -1,0 +1,229 @@
+fileFormatVersion: 2
+guid: f442204ffcd1e4f4db0266cf09510ab1
+ModelImporter:
+  serializedVersion: 23
+  fileIDToRecycleName:
+    100000: Arm_Rull
+    100002: Armature
+    100004: B_bone
+    100006: biker
+    100008: //RootNode
+    100010: Body
+    100012: Body_2
+    100014: Bone.002
+    100016: empty
+    100018: fin.L
+    100020: fin.R
+    100022: fingers.L
+    100024: fingers.L_end
+    100026: fingers.R
+    100028: fingers.R_end
+    100030: foot.L
+    100032: foot.L.001
+    100034: foot.L.001_end
+    100036: foot.L_end
+    100038: foot.R
+    100040: foot.R.001
+    100042: foot.R.001_end
+    100044: foot.R_end
+    100046: General
+    100048: H.L
+    100050: H.R
+    100052: hand.L
+    100054: hand.R
+    100056: hand_2.L
+    100058: hand_2.L_end
+    100060: hand_2.R
+    100062: hand_2.R_end
+    100064: head
+    100066: IK.L
+    100068: ik.L
+    100070: IK.L_end
+    100072: IK.R
+    100074: ik.R
+    100076: IK.R_end
+    100078: leg.L
+    100080: leg.R
+    100082: moto
+    100084: moto 1
+    100086: mouth
+    100088: mouth_end
+    100090: ring
+    100092: ring_end
+    100094: rull
+    100096: shin.L
+    100098: shin.R
+    100100: wheel_1
+    100102: wheel_1 1
+    100104: wheel_1_end
+    100106: wheel_2
+    100108: wheel_2 1
+    100110: wheel_2_end
+    400000: Arm_Rull
+    400002: Armature
+    400004: B_bone
+    400006: biker
+    400008: //RootNode
+    400010: Body
+    400012: Body_2
+    400014: Bone.002
+    400016: empty
+    400018: fin.L
+    400020: fin.R
+    400022: fingers.L
+    400024: fingers.L_end
+    400026: fingers.R
+    400028: fingers.R_end
+    400030: foot.L
+    400032: foot.L.001
+    400034: foot.L.001_end
+    400036: foot.L_end
+    400038: foot.R
+    400040: foot.R.001
+    400042: foot.R.001_end
+    400044: foot.R_end
+    400046: General
+    400048: H.L
+    400050: H.R
+    400052: hand.L
+    400054: hand.R
+    400056: hand_2.L
+    400058: hand_2.L_end
+    400060: hand_2.R
+    400062: hand_2.R_end
+    400064: head
+    400066: IK.L
+    400068: ik.L
+    400070: IK.L_end
+    400072: IK.R
+    400074: ik.R
+    400076: IK.R_end
+    400078: leg.L
+    400080: leg.R
+    400082: moto
+    400084: moto 1
+    400086: mouth
+    400088: mouth_end
+    400090: ring
+    400092: ring_end
+    400094: rull
+    400096: shin.L
+    400098: shin.R
+    400100: wheel_1
+    400102: wheel_1 1
+    400104: wheel_1_end
+    400106: wheel_2
+    400108: wheel_2 1
+    400110: wheel_2_end
+    2100000: moto_1
+    2100002: biker_1
+    4300000: rull
+    4300002: moto
+    4300004: biker
+    4300006: wheel_2
+    4300008: wheel_1
+    7400000: Armature|go
+    7400002: Armature|idle
+    7400004: Armature|left
+    7400006: Armature|right
+    7400008: Armature|start
+    7400010: Armature|stop
+    9500000: //RootNode
+    13700000: biker
+    13700002: moto
+    13700004: rull
+    13700006: wheel_1
+    13700008: wheel_2
+  externalObjects: {}
+  materials:
+    importMaterials: 1
+    materialName: 1
+    materialSearch: 1
+    materialLocation: 0
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    rigImportErrors: 
+    rigImportWarnings: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    useSRGBMaterialColor: 1
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    preserveHierarchy: 0
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+    previousCalculatedGlobalScale: 0.9999999
+    hasPreviousCalculatedGlobalScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    serializedVersion: 2
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 2
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 55742
+  packageName: Bikers
+  packageVersion: 1.0
+  assetPath: Assets/Bikers/Bikers/models/Bikers.fbx
+  uploadId: 634009

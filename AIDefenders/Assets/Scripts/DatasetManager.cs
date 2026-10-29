@@ -120,7 +120,8 @@ public class DatasetManager : MonoBehaviour
     string lastFocusedSetting;
 
     const string DatasetsFolderName = "Datasets";
-    const float MinCameraDistance = 30f;
+    const float MinCameraDistance = 8f;
+    const float MaxCameraDistance = 180f;
     static readonly Color[] PreviewBoxColors =
     {
         new Color(0.25f, 1f, 0.35f),
@@ -348,7 +349,7 @@ public class DatasetManager : MonoBehaviour
             }
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label(target.gameObject.name, GUILayout.ExpandWidth(true));
+            GUILayout.Label(target.HudLabel, GUILayout.ExpandWidth(true));
             if (GUILayout.Button("삭제", GUILayout.Width(44f), GUILayout.Height(22f)))
                 removeTarget = i;
 
@@ -359,6 +360,7 @@ public class DatasetManager : MonoBehaviour
         {
             includedTargets.RemoveAt(removeTarget);
             captureSettingsDirty = true;
+            RefreshAutoCaptureFraming();
         }
 
         GUILayout.EndScrollView();
@@ -412,14 +414,19 @@ public class DatasetManager : MonoBehaviour
         bool minCountCommitted = DrawIntSetting("최소 대상 수", ref minCaptureCount, 1, 32);
         bool maxCountCommitted = DrawIntSetting("최대 대상 수", ref maxCaptureCount, 1, 32);
         if (minCountCommitted || maxCountCommitted)
+        {
             FixIntPair(ref minCaptureCount, ref maxCaptureCount, minCountCommitted);
+            RefreshAutoCaptureFraming();
+        }
 
-        DrawFloatSetting("최소 간격", ref minSpacing, 0f, 50f);
-        DrawRangeSetting("카메라 거리", ref cameraDistanceRange, MinCameraDistance, 500f);
-        DrawRangeSetting("카메라 피치", ref cameraPitchRange, 0f, 89f);
-        DrawRangeSetting("카메라 요", ref cameraYawRange, -360f, 360f);
-        DrawRangeSetting("카메라 FOV", ref cameraFovRange, 10f, 120f);
         DrawIntSetting("JPEG 품질", ref jpegQuality, 1, 100);
+        GUILayout.Space(6f);
+        GUILayout.Label("카메라 거리·간격은 표적 크기와 최대 수량으로 자동 조절됩니다.");
+        GUILayout.Label(string.Format(
+            CultureInfo.InvariantCulture,
+            "현재 거리 {0:0}–{1:0}",
+            cameraDistanceRange.x,
+            cameraDistanceRange.y));
         GUILayout.EndScrollView();
 
         GUILayout.Space(6f);
@@ -474,11 +481,12 @@ public class DatasetManager : MonoBehaviour
                 continue;
 
             shown++;
-            if (GUILayout.Button(prefab.gameObject.name, GUILayout.Height(26f)))
+            if (GUILayout.Button(prefab.HudLabel, GUILayout.Height(26f)))
             {
                 includedTargets.Add(prefab);
                 captureSettingsDirty = true;
                 showPrefabDialog = false;
+                RefreshAutoCaptureFraming();
             }
         }
 
@@ -975,11 +983,6 @@ public class DatasetManager : MonoBehaviour
         if (maxCaptureCount < minCaptureCount)
             maxCaptureCount = minCaptureCount;
 
-        ApplyFloatDraft("float:최소 간격", ref minSpacing, 0f, 50f);
-        ApplyRangeDraft("카메라 거리", ref cameraDistanceRange, MinCameraDistance, 500f);
-        ApplyRangeDraft("카메라 피치", ref cameraPitchRange, 0f, 89f);
-        ApplyRangeDraft("카메라 요", ref cameraYawRange, -360f, 360f);
-        ApplyRangeDraft("카메라 FOV", ref cameraFovRange, 10f, 120f);
         ApplyIntDraft("int:JPEG 품질", ref jpegQuality, 1, 100);
         ApplyIntDraft("int:학습(train)", ref pendingTrainCount, 0, 100000);
         ApplyIntDraft("int:검증(val)", ref pendingValCount, 0, 100000);
@@ -1095,6 +1098,7 @@ public class DatasetManager : MonoBehaviour
         RefreshPrefabCatalog();
         RefreshTerrainCatalog();
         LoadCaptureSettings();
+        RefreshAutoCaptureFraming();
         WriteDatasetYaml(GetDatasetFolder(editingDataset));
         RefreshSampleList();
     }
@@ -1119,16 +1123,11 @@ public class DatasetManager : MonoBehaviour
             minCaptureCount = 1;
         if (maxCaptureCount < 1)
             maxCaptureCount = 1;
+        ApplyInternalCameraDefaults();
         if (cameraDistanceRange.x < MinCameraDistance)
             cameraDistanceRange.x = MinCameraDistance;
         if (cameraDistanceRange.y < cameraDistanceRange.x)
             cameraDistanceRange.y = cameraDistanceRange.x;
-        if (cameraPitchRange.sqrMagnitude < 0.0001f)
-            cameraPitchRange = new Vector2(15f, 75f);
-        if (cameraYawRange.y <= cameraYawRange.x)
-            cameraYawRange = new Vector2(0f, 360f);
-        if (cameraFovRange.sqrMagnitude < 0.0001f || cameraFovRange.y < cameraFovRange.x)
-            cameraFovRange = new Vector2(35f, 70f);
         if (spawnViewFill < 0.2f)
             spawnViewFill = 0.65f;
         if (pendingTrainCount < 0)
@@ -1141,6 +1140,113 @@ public class DatasetManager : MonoBehaviour
             trainEpochs = 30;
         if (trainBatchSize < 1)
             trainBatchSize = 32;
+    }
+
+    void ApplyInternalCameraDefaults()
+    {
+        cameraPitchRange = new Vector2(18f, 62f);
+        cameraYawRange = new Vector2(0f, 360f);
+        cameraFovRange = new Vector2(40f, 62f);
+    }
+
+    void RefreshAutoCaptureFraming()
+    {
+        ApplyInternalCameraDefaults();
+
+        float smallest = float.MaxValue;
+        float largest = 0f;
+        float typicalSum = 0f;
+        int counted = 0;
+        for (int i = 0; i < includedTargets.Count; i++)
+        {
+            float size = MeasureTargetSize(includedTargets[i]);
+            if (size < 0.05f)
+                continue;
+
+            smallest = Mathf.Min(smallest, size);
+            largest = Mathf.Max(largest, size);
+            typicalSum += size;
+            counted++;
+        }
+
+        if (counted == 0)
+            return;
+
+        float typical = typicalSum / counted;
+        float spacing = Mathf.Clamp(typical * 0.75f, 1.2f, 18f);
+        int crowd = Mathf.Max(1, maxCaptureCount);
+        float packRadius = 0.55f * typical * Mathf.Sqrt(crowd);
+        packRadius += spacing * Mathf.Max(0f, Mathf.Sqrt(crowd) - 1f) * 0.5f;
+
+        float wideFov = cameraFovRange.y;
+        float narrowFov = cameraFovRange.x;
+        float closeLargest = DistanceForViewFill(largest, wideFov, 0.52f);
+        float farSmallest = DistanceForViewFill(smallest, narrowFov, 0.11f);
+        float fill = Mathf.Clamp(spawnViewFill, 0.2f, 1f);
+        float packDist = packRadius / Mathf.Max(0.001f, Mathf.Tan(0.5f * wideFov * Mathf.Deg2Rad) * fill);
+
+        float minD = Mathf.Max(MinCameraDistance, closeLargest, packDist * 0.85f);
+        float maxD = Mathf.Max(minD * 1.35f, farSmallest, packDist * 1.45f);
+        maxD = Mathf.Min(MaxCameraDistance, maxD);
+        minD = Mathf.Min(minD, maxD);
+
+        bool changed =
+            Mathf.Abs(cameraDistanceRange.x - minD) > 0.05f ||
+            Mathf.Abs(cameraDistanceRange.y - maxD) > 0.05f ||
+            Mathf.Abs(minSpacing - spacing) > 0.05f;
+
+        cameraDistanceRange = new Vector2(minD, maxD);
+        minSpacing = spacing;
+        if (changed)
+            captureSettingsDirty = true;
+    }
+
+    static float DistanceForViewFill(float worldSize, float fovDegrees, float fill)
+    {
+        float half = 0.5f * fovDegrees * Mathf.Deg2Rad;
+        fill = Mathf.Max(0.04f, fill);
+        return worldSize / (2f * Mathf.Tan(half) * fill);
+    }
+
+    static float MeasureTargetSize(Target_Base target)
+    {
+        if (target == null)
+            return 2f;
+
+        Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
+        float maxDim = 0f;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer mesh = renderers[i];
+            if (mesh == null || !(mesh is MeshRenderer || mesh is SkinnedMeshRenderer))
+                continue;
+
+            Bounds local = mesh.localBounds;
+            Vector3 scale = mesh.transform.lossyScale;
+            Vector3 size = new Vector3(
+                Mathf.Abs(local.size.x * scale.x),
+                Mathf.Abs(local.size.y * scale.y),
+                Mathf.Abs(local.size.z * scale.z));
+            maxDim = Mathf.Max(maxDim, size.x, size.y, size.z);
+        }
+
+        return maxDim > 0.05f ? maxDim : 2f;
+    }
+
+    int PickSpawnCount()
+    {
+        int minCount = Mathf.Max(1, minCaptureCount);
+        int maxCount = Mathf.Max(minCount, maxCaptureCount);
+        return Random.Range(minCount, maxCount + 1);
+    }
+
+    float PickCameraDistance(int spawnCount)
+    {
+        float minD = cameraDistanceRange.x;
+        float maxD = Mathf.Max(minD, cameraDistanceRange.y);
+        float crowd = Mathf.InverseLerp(1f, Mathf.Max(1, maxCaptureCount), spawnCount);
+        float t = Mathf.Clamp01(crowd + Random.Range(-0.12f, 0.12f));
+        return Mathf.Lerp(minD, maxD, t);
     }
 
     void ResolveTerrainsRoot()
@@ -1176,7 +1282,7 @@ public class DatasetManager : MonoBehaviour
             }
         }
 #endif
-        prefabCatalog.Sort((a, b) => string.CompareOrdinal(a.gameObject.name, b.gameObject.name));
+        prefabCatalog.Sort((a, b) => string.CompareOrdinal(a.HudLabel, b.HudLabel));
     }
 
     void RefreshTerrainCatalog()
@@ -1271,6 +1377,7 @@ public class DatasetManager : MonoBehaviour
         }
 
         captureSettingsDirty = false;
+        RefreshAutoCaptureFraming();
     }
 
     void SaveCaptureSettings()
@@ -2213,8 +2320,10 @@ public class DatasetManager : MonoBehaviour
     void RandomizeScene()
     {
         RandomizeTerrain();
+        RefreshAutoCaptureFraming();
 
-        float distance = Random.Range(cameraDistanceRange.x, cameraDistanceRange.y);
+        int spawnCount = PickSpawnCount();
+        float distance = PickCameraDistance(spawnCount);
         float fov = Random.Range(cameraFovRange.x, cameraFovRange.y);
         float pitch = Random.Range(cameraPitchRange.x, cameraPitchRange.y);
         float yaw = Random.Range(cameraYawRange.x, cameraYawRange.y);
@@ -2224,7 +2333,7 @@ public class DatasetManager : MonoBehaviour
         lastSpawnRadius = spawnRadius;
 
         PlaceCamera(origin, distance, fov, pitch, yaw);
-        SpawnCaptureTargets(origin, spawnRadius);
+        SpawnCaptureTargets(origin, spawnRadius, spawnCount);
         RandomizeLighting();
         RandomizeFog();
     }
@@ -2291,7 +2400,7 @@ public class DatasetManager : MonoBehaviour
         return Mathf.Max(0.5f, distance * Mathf.Tan(halfAngle) * fill);
     }
 
-    void SpawnCaptureTargets(Vector3 origin, float spawnRadius)
+    void SpawnCaptureTargets(Vector3 origin, float spawnRadius, int count)
     {
         ClearCaptureTargets();
 
@@ -2316,9 +2425,7 @@ public class DatasetManager : MonoBehaviour
         if (pool.Count == 0)
             return;
 
-        int minCount = Mathf.Max(1, minCaptureCount);
-        int maxCount = Mathf.Max(minCount, maxCaptureCount);
-        int spawnCount = Random.Range(minCount, maxCount + 1);
+        int spawnCount = count > 0 ? count : PickSpawnCount();
 
         for (int i = 0; i < spawnCount; i++)
         {
@@ -2466,29 +2573,7 @@ public class DatasetManager : MonoBehaviour
     bool TryGetTargetBounds(Target_Base target, out Bounds bounds)
     {
         bounds = default;
-        if (target == null)
-            return false;
-
-        Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
-        bool found = false;
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            Renderer renderer = renderers[i];
-            if (renderer == null || !renderer.enabled)
-                continue;
-
-            if (!found)
-            {
-                bounds = renderer.bounds;
-                found = true;
-            }
-            else
-            {
-                bounds.Encapsulate(renderer.bounds);
-            }
-        }
-
-        return found;
+        return target != null && target.TryGetRenderBounds(out bounds);
     }
 
     void PrepareTargetForCapture(Target_Base target)
