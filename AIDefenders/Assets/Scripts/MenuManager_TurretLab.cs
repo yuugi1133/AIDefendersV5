@@ -1,4 +1,3 @@
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,17 +32,18 @@ public class MenuManager_TurretLab : MonoBehaviour
     public TurretPlatform previewPlatform;
     public TurretLabEntry[] turretCatalog;
 
-    readonly Color panelColor = new Color(0.12f, 0.14f, 0.18f, 0.94f);
-    readonly Color rowColor = new Color(0.22f, 0.24f, 0.28f, 1f);
-    readonly Color selectedColor = new Color(0.32f, 0.52f, 0.78f, 1f);
+    readonly Color panelColor = UiSkin.Panel;
+    readonly Color rowColor = UiSkin.Blue;
+    readonly Color selectedColor = UiSkin.Sky;
     readonly Color textColor = new Color(0.94f, 0.95f, 0.97f, 1f);
-    readonly Color mutedColor = new Color(0.72f, 0.74f, 0.78f, 1f);
+    readonly Color mutedColor = UiSkin.Muted;
 
     Transform turretListContent;
     Transform researchListContent;
     Text pointsText;
     Image[] turretRowImages = new Image[0];
     int selectedIndex = -1;
+    int previewLevel = 1;
     GameObject previewInstance;
 
     void Start()
@@ -53,8 +53,8 @@ public class MenuManager_TurretLab : MonoBehaviour
             previewPlatform = FindFirstObjectByType<TurretPlatform>();
 
         ConfigureCanvas();
-        ApplyExistingFonts();
-        WireSceneButtonClicks();
+        StripLegacyHud();
+        CreateNavButtons();
         BuildLabPanel();
 
         if (turretCatalog != null && turretCatalog.Length > 0)
@@ -100,20 +100,6 @@ public class MenuManager_TurretLab : MonoBehaviour
         }
     }
 
-    void ApplyExistingFonts()
-    {
-        Canvas canvas = FindCanvas();
-        if (canvas == null)
-            return;
-
-        TMP_Text[] texts = canvas.GetComponentsInChildren<TMP_Text>(true);
-        for (int i = 0; i < texts.Length; i++)
-        {
-            if (texts[i] != null)
-                UiFont.Apply(texts[i], UiType.BodyMedium);
-        }
-    }
-
     void BuildLabPanel()
     {
         Canvas canvas = FindCanvas();
@@ -133,7 +119,7 @@ public class MenuManager_TurretLab : MonoBehaviour
         sidebarRt.anchorMin = new Vector2(1f, 0f);
         sidebarRt.anchorMax = new Vector2(1f, 1f);
         sidebarRt.pivot = new Vector2(1f, 0.5f);
-        sidebarRt.sizeDelta = new Vector2(420f, 0f);
+        sidebarRt.sizeDelta = new Vector2(520f, 0f);
         sidebarRt.anchoredPosition = Vector2.zero;
 
         VerticalLayoutGroup layout = sidebar.gameObject.AddComponent<VerticalLayoutGroup>();
@@ -146,11 +132,11 @@ public class MenuManager_TurretLab : MonoBehaviour
         layout.childForceExpandHeight = false;
 
         AddSectionLabel(sidebarRt, "포탑");
-        turretListContent = CreateScrollSection(sidebarRt, "TurretList", 280f);
+        turretListContent = CreateScrollSection(sidebarRt, "TurretList", 240f);
         AddSectionLabel(sidebarRt, "연구");
         researchListContent = CreateScrollSection(sidebarRt, "ResearchList", 380f);
 
-        Image pointsBar = UiFont.AddImage(sidebarRt, "ResearchPoints", new Color(0.08f, 0.09f, 0.12f, 1f));
+        Image pointsBar = UiFont.AddImage(sidebarRt, "ResearchPoints", new Color(.36f, .16f, .65f, 1f));
         LayoutElement pointsLayout = pointsBar.gameObject.AddComponent<LayoutElement>();
         pointsLayout.minHeight = 52f;
         pointsLayout.preferredHeight = 52f;
@@ -181,11 +167,11 @@ public class MenuManager_TurretLab : MonoBehaviour
 
     Transform CreateScrollSection(Transform parent, string name, float height)
     {
-        Image frame = UiFont.AddImage(parent, name, new Color(0.08f, 0.09f, 0.11f, 0.9f));
+        Image frame = UiFont.AddImage(parent, name, UiSkin.Navy);
         LayoutElement frameLayout = frame.gameObject.AddComponent<LayoutElement>();
         frameLayout.minHeight = 120f;
         frameLayout.preferredHeight = height;
-        frameLayout.flexibleHeight = 1f;
+        frameLayout.flexibleHeight = name == "TurretList" ? 0f : 1f;
 
         Mask mask = frame.gameObject.AddComponent<Mask>();
         mask.showMaskGraphic = true;
@@ -254,6 +240,7 @@ public class MenuManager_TurretLab : MonoBehaviour
         TurretLabEntry entry = GetSelectedEntry();
         string group = entry != null ? TurretResearch.GroupOfPrefab(entry.prefab) : "";
         TurretResearchDef[] researches = TurretResearch.ForGroup(group);
+        CreateResearchOverview(entry, researches);
         if (researches == null || researches.Length == 0)
         {
             CreateRow(researchListContent, "EmptyResearch", "준비 중 — 연구가 아직 없습니다.", mutedColor);
@@ -329,6 +316,89 @@ public class MenuManager_TurretLab : MonoBehaviour
 
         RefreshResearchPoints();
         RefreshResearchList();
+        SpawnPreview(GetSelectedEntry());
+    }
+
+    void CreateResearchOverview(TurretLabEntry entry, TurretResearchDef[] researches)
+    {
+        if (entry == null || entry.prefab == null)
+            return;
+        TurretController source = entry.prefab.GetComponentInChildren<TurretController>(true);
+        if (source == null)
+            return;
+        previewLevel = Mathf.Clamp(previewLevel, 1, source.MaxLevel);
+        TurretUpgradeTier tier = source.upgradeTiers != null && source.upgradeTiers.Length >= previewLevel
+            ? source.upgradeTiers[previewLevel - 1] : null;
+        WeaponSystem weapon = source.weapon != null ? source.weapon : source.GetComponent<WeaponSystem>();
+        float baseRange = tier != null && tier.range > 0f ? tier.range : source.range;
+        float baseAp = tier != null ? tier.armorPierce : source.armorPierce;
+        float rangeBonus = TurretResearch.RangeBonus(source);
+        float apBonus = TurretResearch.ArmorPierceBonus(source);
+        int complete = 0;
+        if (researches != null)
+            foreach (TurretResearchDef research in researches)
+                if (research != null && TurretResearch.IsComplete(research.id))
+                    complete++;
+        string detail = "연구 완료  " + complete + " / " + (researches != null ? researches.Length : 0)
+            + "\n사거리  " + (baseRange + rangeBonus).ToString("0.#") + "  (연구 +" + rangeBonus.ToString("0.#") + ")"
+            + "    AP  " + (baseAp + apBonus).ToString("0.#") + "  (+" + apBonus.ToString("0.#") + ")";
+        if (weapon != null)
+        {
+            float speed = weapon.ammo != null ? weapon.ammo.bulletSpeed : 0f;
+            float reload = tier != null ? tier.reloadTime : weapon.reloadTime;
+            detail += "\n탄속  " + (speed + TurretResearch.BulletSpeedBonus(source)).ToString("0.#")
+                + "    탄퍼짐  " + Mathf.Max(0f, weapon.spreadAngle + TurretResearch.SpreadBonus(source)).ToString("0.#") + "°"
+                + "\n재장전  " + Mathf.Max(0.01f, reload + TurretResearch.ReloadBonus(source)).ToString("0.##") + "초";
+        }
+        detail += "\n영구 연구는 아래 목록에서 해금합니다.\n단계 업그레이드는 전투 중 포탑을 선택해 진행합니다.";
+
+        Image row = CreateRow(researchListContent, "ResearchOverview", "연구 적용 성능 · " + previewLevel + "단계 미리보기", textColor);
+        LayoutElement rowLayout = row.GetComponent<LayoutElement>();
+        rowLayout.minHeight = rowLayout.preferredHeight = 246f;
+        Text heading = row.GetComponentInChildren<Text>();
+        heading.fontSize = 18;
+        heading.rectTransform.anchorMin = new Vector2(0f, 1f);
+        heading.rectTransform.anchorMax = new Vector2(1f, 1f);
+        heading.rectTransform.pivot = new Vector2(0.5f, 1f);
+        heading.rectTransform.offsetMin = new Vector2(14f, -38f);
+        heading.rectTransform.offsetMax = new Vector2(-14f, -8f);
+        Text body = UiFont.AddText(row.rectTransform, "AppliedStats", detail, 16, TextAnchor.UpperLeft, mutedColor, UiType.Body);
+        body.raycastTarget = false;
+        UiFont.Stretch(body.rectTransform);
+        body.rectTransform.offsetMin = new Vector2(14f, 52f);
+        body.rectTransform.offsetMax = new Vector2(-14f, -44f);
+
+        var buttons = new GameObject("PreviewLevels", typeof(RectTransform));
+        RectTransform buttonsRt = buttons.GetComponent<RectTransform>();
+        buttonsRt.SetParent(row.transform, false);
+        buttonsRt.anchorMin = new Vector2(0f, 0f);
+        buttonsRt.anchorMax = new Vector2(1f, 0f);
+        buttonsRt.pivot = new Vector2(0.5f, 0f);
+        buttonsRt.offsetMin = new Vector2(14f, 10f);
+        buttonsRt.offsetMax = new Vector2(-14f, 44f);
+        HorizontalLayoutGroup layout = buttons.AddComponent<HorizontalLayoutGroup>();
+        layout.spacing = 6f;
+        layout.childForceExpandWidth = true;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandHeight = true;
+        for (int level = 1; level <= source.MaxLevel; level++)
+        {
+            int captured = level;
+            Image image = UiFont.AddImage(buttonsRt, "PreviewLevel_" + level, level == previewLevel ? selectedColor : rowColor);
+            Button button = image.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            BindUiClick(button);
+            Text label = UiFont.AddText(image.rectTransform, "Label", level + "단계", 16, TextAnchor.MiddleCenter, textColor, UiType.BodyMedium);
+            label.raycastTarget = false;
+            UiFont.Stretch(label.rectTransform);
+            button.onClick.AddListener(() =>
+            {
+                previewLevel = captured;
+                SpawnPreview(entry);
+                RefreshResearchList();
+            });
+        }
     }
 
     Image CreateRow(Transform parent, string name, string label, Color labelColor)
@@ -351,6 +421,7 @@ public class MenuManager_TurretLab : MonoBehaviour
             return;
 
         selectedIndex = index;
+        previewLevel = 1;
         for (int i = 0; i < turretRowImages.Length; i++)
         {
             if (turretRowImages[i] != null)
@@ -388,6 +459,8 @@ public class MenuManager_TurretLab : MonoBehaviour
             turret.enabled = false;
             turret.sourcePrefab = entry.prefab;
             turret.displayName = entry.Label;
+            turret.upgradeLevel = Mathf.Clamp(previewLevel, 1, turret.MaxLevel);
+            turret.BeginConstruction(0f, true, null);
             previewPlatform.Mount(turret);
         }
         else
@@ -438,18 +511,57 @@ public class MenuManager_TurretLab : MonoBehaviour
             return;
 
         for (int i = parent.childCount - 1; i >= 0; i--)
-            Destroy(parent.GetChild(i).gameObject);
+        {
+            GameObject child = parent.GetChild(i).gameObject;
+            child.SetActive(false);
+            Destroy(child);
+        }
     }
 
-    void WireSceneButtonClicks()
+    void StripLegacyHud()
     {
         Canvas canvas = FindCanvas();
         if (canvas == null)
             return;
 
-        Button[] buttons = canvas.GetComponentsInChildren<Button>(true);
-        for (int i = 0; i < buttons.Length; i++)
-            BindUiClick(buttons[i]);
+        Transform panel = canvas.transform.Find("Panel");
+        if (panel != null)
+            Destroy(panel.gameObject);
+
+        Transform dataset = canvas.transform.Find("Button_Dataset");
+        if (dataset != null)
+            Destroy(dataset.gameObject);
+
+        Transform main = canvas.transform.Find("Button_MainMenu");
+        if (main != null)
+            Destroy(main.gameObject);
+    }
+
+    void CreateNavButtons()
+    {
+        Canvas canvas = FindCanvas();
+        if (canvas == null)
+            return;
+
+        Button dataset = UiSkin.Button(
+            canvas.transform,
+            "DatasetFactory",
+            "데이터셋 팩토리",
+            UiSkin.Blue,
+            Vector2.zero,
+            new Vector2(180f, 72f),
+            new Vector2(300f, 76f));
+        dataset.onClick.AddListener(() => LoadScene("DatasetGeneratorScene"));
+
+        Button main = UiSkin.Button(
+            canvas.transform,
+            "MainMenu",
+            "메인 메뉴",
+            UiSkin.Blue,
+            Vector2.zero,
+            new Vector2(520f, 72f),
+            new Vector2(300f, 76f));
+        main.onClick.AddListener(() => LoadScene("MainMenu"));
     }
 
     static void BindUiClick(Button button)
@@ -460,9 +572,9 @@ public class MenuManager_TurretLab : MonoBehaviour
 
     Canvas FindCanvas()
     {
-        Canvas canvas = GetComponentInParent<Canvas>();
+        Canvas canvas = UiFont.FindSceneCanvas(this);
         if (canvas == null)
-            canvas = FindFirstObjectByType<Canvas>();
+            canvas = SceneLoader.FindSceneCanvas();
         return canvas;
     }
 }

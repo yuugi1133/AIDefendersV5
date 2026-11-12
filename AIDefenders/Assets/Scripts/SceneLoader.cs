@@ -1,5 +1,7 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -7,6 +9,7 @@ public class SceneLoader : MonoBehaviour
 {
     static SceneLoader instance;
     static bool loading;
+    public static string PreviousSceneName { get; private set; } = "MainMenu";
 
     CanvasGroup overlay;
     Image fill;
@@ -24,6 +27,9 @@ public class SceneLoader : MonoBehaviour
         if (loading)
             return;
 
+        string current = SceneManager.GetActiveScene().name;
+        if (current != sceneName)
+            PreviousSceneName = current;
         EnsureInstance();
         instance.StartCoroutine(instance.LoadRoutine(sceneName));
     }
@@ -63,12 +69,84 @@ public class SceneLoader : MonoBehaviour
 
         SetProgress(1f);
         yield return new WaitForSecondsRealtime(0.2f);
+        Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         op.allowSceneActivation = true;
         while (!op.isDone)
             yield return null;
 
+        RestoreUiInput();
         HideOverlay();
         loading = false;
+    }
+
+    public static Canvas FindSceneCanvas()
+    {
+        Scene active = SceneManager.GetActiveScene();
+        Canvas[] canvases = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        Canvas named = null;
+        Canvas best = null;
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+            if (canvas == null || IsLoadingCanvas(canvas))
+                continue;
+            if (canvas.gameObject.scene != active)
+                continue;
+
+            if (named == null && canvas.name == "Canvas")
+                named = canvas;
+            if (best == null || canvas.sortingOrder < best.sortingOrder)
+                best = canvas;
+        }
+
+        return named != null ? named : best;
+    }
+
+    static bool IsLoadingCanvas(Canvas canvas)
+    {
+        if (canvas == null)
+            return false;
+        if (instance != null && canvas.transform.IsChildOf(instance.transform))
+            return true;
+        return canvas.name == "LoadingOverlay";
+    }
+
+    static void RestoreUiInput()
+    {
+        Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        EventSystem[] systems = Object.FindObjectsByType<EventSystem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        EventSystem keep = EventSystem.current;
+        if (keep == null && systems.Length > 0)
+            keep = systems[0];
+
+        for (int i = 0; i < systems.Length; i++)
+        {
+            EventSystem system = systems[i];
+            if (system == null || system == keep)
+                continue;
+            system.gameObject.SetActive(false);
+        }
+
+        if (keep == null)
+        {
+            GameObject go = new GameObject("EventSystem");
+            keep = go.AddComponent<EventSystem>();
+            keep.sendNavigationEvents = false;
+            go.AddComponent<InputSystemUIInputModule>();
+            return;
+        }
+
+        if (keep.GetComponent<InputSystemUIInputModule>() == null &&
+            keep.GetComponent<BaseInputModule>() == null)
+            keep.gameObject.AddComponent<InputSystemUIInputModule>();
+
+        keep.enabled = false;
+        keep.enabled = true;
     }
 
     void ShowOverlay(string sceneName)

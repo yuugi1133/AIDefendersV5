@@ -16,11 +16,14 @@ public class Target_Enemy : Target_Base
             return;
 
         int score = ResolveIdentifyScore(true);
-        director.AddFunds(killFunds);
+        int funds = killFunds;
+        if (!lastHitFromStatus)
+            funds += Mathf.RoundToInt(killFunds * TurretResearch.KillFundsBonus(lastAttacker));
+        director.AddFunds(funds);
         director.AddScore(score);
         director.RegisterTargetOutcome(this, true);
         Vector3 popup = GetPopupWorld();
-        HudFx.ShowFunds(popup, killFunds);
+        HudFx.ShowFunds(popup, funds);
         HudFx.ShowScore(popup, score);
     }
 

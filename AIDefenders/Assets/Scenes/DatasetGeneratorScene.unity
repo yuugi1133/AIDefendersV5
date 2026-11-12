@@ -257,7 +257,7 @@ GameObject:
   - component: {fileID: 492690547}
   - component: {fileID: 492690546}
   - component: {fileID: 492690545}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Terrain_TestGround
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -340,131 +340,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1842736502}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &529687340 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3010782741411772691, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-  m_PrefabInstance: {fileID: 610968155}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 120d0d39a4dccf949a5077c22ed2c097, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Target_Sheep
---- !u!1001 &610968155
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -7.926399
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.006001298
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -3.242
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1094053276817189760, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-      propertyPath: m_Name
-      value: Target_Sheep
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
---- !u!1001 &929251719
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -5.3867116
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.00599832
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -5.3232565
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7898370397175408210, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-      propertyPath: m_Name
-      value: Target_Wolf
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
 --- !u!1 &961739749
 GameObject:
   m_ObjectHideFlags: 0
@@ -635,12 +510,12 @@ MonoBehaviour:
   renderTexture: {fileID: 8400000, guid: 0049efad0f4709a43a3856893e14a15f, type: 2}
   jpegQuality: 70
   animalPool:
-  - animal: {fileID: 1448286848}
+  - animal: {fileID: 0}
     classID: 0
     label: Enemy_Wolf
     animationStates:
     - Move
-  - animal: {fileID: 529687340}
+  - animal: {fileID: 0}
     classID: 1
     label: Friendly_Sheep
     animationStates:
@@ -665,6 +540,45 @@ MonoBehaviour:
   writeDatasetYaml: 1
   terrainsRoot: {fileID: 1842736502}
   targetPrefabsFolder: Assets/Targets
+  previewTexture: {fileID: 0}
+  selectedDataset: 
+  editingDataset: 
+  selectedSampleId: 
+  captureSettingsDirty: 0
+  nameDialogValue: 
+  nameDialogError: 
+  generateDialogError: 
+  manualCaptureError: 
+  manualCaptureStatus: 
+  manualSplit: train
+  manualPlaceClassIndex: 0
+  trainDialogError: 
+  manualSunYaw: 0
+  pendingManualSplit: train
+  pendingManualName: 
+  pendingTrainCount: 70
+  pendingValCount: 20
+  pendingTestCount: 10
+  trainEpochs: 30
+  trainBatchSize: 32
+  trainResult:
+    status: 
+    message: 
+    dataset: 
+    epochs: 0
+    batch: 0
+    precision: 0
+    recall: 0
+    map50: 0
+    map50_95: 0
+    lastWeights: 
+    bestWeights: 
+    epoch: 0
+    trainAcc: 0
+    valAcc: 0
+    trainHistory: []
+    valHistory: []
+  prefabPickForCreate: 0
 --- !u!4 &1194965414
 Transform:
   m_ObjectHideFlags: 0
@@ -680,17 +594,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1448286848 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4191478299054503013, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-  m_PrefabInstance: {fileID: 929251719}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 56f67b06764ad834eb72ba888d1cc1e5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Target_Wolf
 --- !u!1 &1485303038
 GameObject:
   m_ObjectHideFlags: 0
@@ -830,7 +733,7 @@ GameObject:
   - component: {fileID: 1592740778}
   - component: {fileID: 1592740777}
   - component: {fileID: 1592740776}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Terrain_GrassField
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -922,7 +825,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1842736502}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Terrains
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -954,6 +857,4 @@ SceneRoots:
   - {fileID: 961739753}
   - {fileID: 203844589}
   - {fileID: 1485303042}
-  - {fileID: 929251719}
-  - {fileID: 610968155}
   - {fileID: 1842736502}

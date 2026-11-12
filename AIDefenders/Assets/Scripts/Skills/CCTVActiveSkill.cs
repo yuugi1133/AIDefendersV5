@@ -13,6 +13,7 @@ public class CCTVSkillContext
 public abstract class CCTVActiveSkill : MonoBehaviour
 {
     public string displayName = "스킬";
+    public Sprite icon;
     public float cooldown = 8f;
     public bool startCooldownOnUse = true;
 
@@ -24,6 +25,21 @@ public abstract class CCTVActiveSkill : MonoBehaviour
 
     float readyAt = -999f;
     bool coolingDown;
+
+    protected virtual string DefaultIconResource
+    {
+        get { return ""; }
+    }
+
+    public Sprite HudIcon
+    {
+        get
+        {
+            if (icon == null && !string.IsNullOrEmpty(DefaultIconResource))
+                icon = Resources.Load<Sprite>(DefaultIconResource);
+            return icon;
+        }
+    }
 
     public bool IsReady
     {

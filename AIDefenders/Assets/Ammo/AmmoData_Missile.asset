@@ -13,21 +13,26 @@ MonoBehaviour:
   m_Name: AmmoData_Missile
   m_EditorClassIdentifier: Assembly-CSharp::AmmoData
   fireMode: 0
-  damage: 120
-  bulletSpeed: 16
+  damage: 275
+  bulletSpeed: 60
   gravity: 0
   lifetime: 6
-  bulletPrefab: {fileID: 3223724401015827084, guid: f8f58a808953ea449baefbc91f9b1958, type: 3}
-  homingTurnRate: 220
+  bulletPrefab: {fileID: 3223724401015827084, guid: f46d08b1d561b9d4b8933e58bb9ff900, type: 3}
+  homingTurnRate: 0
+  flightLoopSfx: {fileID: 11400000, guid: 1b8e4c27d9a04f6a8c3e5f70192b4d6a, type: 2}
   explosionRadius: 8
-  explosionDamage: 60
+  explosionDamage: 120
+  splashHitsPrimary: 0
+  explosionSfx: {fileID: 11400000, guid: 9c7e4a18b2d64f0e8a51c3d7e90b4f26, type: 2}
   hitscanRange: 50
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  muzzleEffect: {fileID: 100002, guid: 6890a03af913b874092fbb1e8337747d, type: 3}
+  heatPerSecond: 20
+  coolPerSecond: 16
+  muzzleEffect: {fileID: 100006, guid: a49596ebf788acd4ab1281bffea444b1, type: 3}
   trailEffect: {fileID: 0}
-  impactEffect: {fileID: 100006, guid: a49596ebf788acd4ab1281bffea444b1, type: 3}
+  impactEffect: {fileID: 560014183069458990, guid: 621e45f610d611746802ad828f66b094, type: 3}
   beamWidth: 0.12
   beamColor: {r: 1, g: 0.35, b: 0.12, a: 0.9}
   beamCoreColor: {r: 1, g: 0.92, b: 0.75, a: 1}

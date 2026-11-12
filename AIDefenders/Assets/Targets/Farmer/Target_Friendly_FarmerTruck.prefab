@@ -265,7 +265,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb6a45929739f194ca01c47e64f2e72b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_FarmerTruck
-  maxHP: 50
+  maxHP: 3600
   currentHP: 0
   moveSpeed: 14
   armorValue: 0.4
@@ -292,7 +292,8 @@ MonoBehaviour:
   rigidbody: {fileID: 7651841071691759251}
   footstep: {fileID: 0}
   vocal: {fileID: 0}
-  death: {fileID: 0}
+  death: {fileID: 11400000, guid: a7e102a4a446f024f9709a26da1caa49, type: 2}
+  engineLoop: {fileID: 11400000, guid: 6f21b8c0a5474d9e8c3b1a7d5e0f9246, type: 2}
   footstepInterval: 0.38
   vocalInterval: {x: 4, y: 11}
   passFunds: 15

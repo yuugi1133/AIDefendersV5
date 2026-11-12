@@ -1014,7 +1014,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d182749d5af1cb3488c6b6d01707e99f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_Tiger
-  maxHP: 380
+  maxHP: 700
   currentHP: 0
   moveSpeed: 10
   armorValue: 0.7
@@ -1041,7 +1041,8 @@ MonoBehaviour:
   rigidbody: {fileID: 6685514216488005920}
   footstep: {fileID: 0}
   vocal: {fileID: 0}
-  death: {fileID: 0}
+  death: {fileID: 11400000, guid: 0347941df4cbea74ca44e0752311e774, type: 2}
+  engineLoop: {fileID: 0}
   footstepInterval: 0.38
   vocalInterval: {x: 4, y: 11}
   killFunds: 10

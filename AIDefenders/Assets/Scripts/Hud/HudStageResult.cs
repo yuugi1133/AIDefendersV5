@@ -3,9 +3,9 @@ using UnityEngine.UI;
 
 public class HudStageResult
 {
-    readonly Color panelColor = new Color(0.12f, 0.14f, 0.18f, 0.97f);
+    readonly Color panelColor = UiSkin.Panel;
     readonly Color textColor = Color.white;
-    readonly Color mutedColor = new Color(0.78f, 0.8f, 0.84f, 1f);
+    readonly Color mutedColor = UiSkin.Muted;
 
     readonly GameObject root;
     readonly CanvasGroup group;
@@ -43,6 +43,11 @@ public class HudStageResult
         cardRt.anchorMax = new Vector2(0.5f, 0.5f);
         cardRt.pivot = new Vector2(0.5f, 0.5f);
         cardRt.sizeDelta = new Vector2(680f, 760f);
+
+        Image ribbon = UiFont.AddImage(cardRt, "ResultRibbon", UiSkin.Gold);
+        UiSkin.Place(ribbon.rectTransform, new Vector2(.5f, 1f), new Vector2(0f, -44f), new Vector2(704f, 76f));
+        Image reward = UiFont.AddImage(cardRt, "ResearchReward", new Color(.39f, .19f, .7f, 1f));
+        UiSkin.Place(reward.rectTransform, new Vector2(.5f, 1f), new Vector2(0f, -532f), new Vector2(624f, 72f));
 
         titleText = UiFont.AddText(cardRt, "Title", "스테이지 클리어", 36, TextAnchor.MiddleLeft, textColor, UiType.Title);
         RectTransform titleRt = titleText.rectTransform;
@@ -83,13 +88,13 @@ public class HudStageResult
         researchText = UiFont.AddText(cardRt, "Research", "연구 포인트  +0", 20, TextAnchor.MiddleRight, mutedColor, UiType.BodyMedium);
         PlaceRow(researchText.rectTransform, 0f, 1f, -514f, 28f);
 
-        Image button = UiFont.AddImage(cardRt, "Menu", Color.white);
+        Image button = UiFont.AddImage(cardRt, "Menu", UiSkin.Green);
         RectTransform buttonRt = button.rectTransform;
         buttonRt.anchorMin = new Vector2(0.5f, 0f);
         buttonRt.anchorMax = new Vector2(0.5f, 0f);
         buttonRt.pivot = new Vector2(0.5f, 0f);
         buttonRt.anchoredPosition = new Vector2(0f, 28f);
-        buttonRt.sizeDelta = new Vector2(220f, 48f);
+        buttonRt.sizeDelta = new Vector2(320f, 64f);
         Button click = button.gameObject.AddComponent<Button>();
         click.targetGraphic = button;
         click.onClick.AddListener(() =>
@@ -97,7 +102,7 @@ public class HudStageResult
             GameSfx.PlayUiClick();
             SceneLoader.Load("MainMenu");
         });
-        Text buttonLabel = UiFont.AddText(buttonRt, "Label", "메인 메뉴", 20, TextAnchor.MiddleCenter, new Color(0.12f, 0.13f, 0.15f, 1f), UiType.BodyMedium);
+        Text buttonLabel = UiFont.AddText(buttonRt, "Label", "메인 메뉴", 20, TextAnchor.MiddleCenter, Color.white, UiType.BodyMedium);
         UiFont.Stretch(buttonLabel.rectTransform);
 
         root.SetActive(false);

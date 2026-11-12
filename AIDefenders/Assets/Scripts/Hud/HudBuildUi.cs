@@ -5,11 +5,11 @@ using UnityEngine.UI;
 
 public class HudBuildUi
 {
-    readonly Color panelColor = new Color(0.08f, 0.1f, 0.14f, 0.88f);
-    readonly Color rowColor = new Color(0.22f, 0.24f, 0.28f, 1f);
+    readonly Color panelColor = UiSkin.Panel;
+    readonly Color rowColor = UiSkin.Blue;
     readonly Color activeColor = new Color(0.32f, 0.52f, 0.78f, 1f);
     readonly Color textColor = Color.white;
-    readonly Color mutedColor = new Color(0.78f, 0.8f, 0.84f, 1f);
+    readonly Color mutedColor = UiSkin.Muted;
 
     readonly TurretPlatformPlacer placer;
     readonly WaveDirector waveDirector;
@@ -29,6 +29,7 @@ public class HudBuildUi
     Transform storageContent;
     Text storageEmpty;
     int lastStoredCount = -1;
+    bool lastTurretCap;
     bool lastOpen;
     GameObject inspectRoot;
     Text inspectTitle;
@@ -75,6 +76,7 @@ public class HudBuildUi
         if (open != lastOpen)
         {
             lastStoredCount = -1;
+            lastTurretCap = false;
             lastOpen = open;
         }
         toggleText.text = open ? "건설 모드  Tab 닫기" : "Tab  건설 메뉴 열기";
@@ -94,7 +96,7 @@ public class HudBuildUi
 
     void Build()
     {
-        toggleRoot = CreatePanel("BuildToggle", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24f, -268f), new Vector2(420f, 48f));
+        toggleRoot = CreatePanel("BuildToggle", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24f, -124f), new Vector2(360f, 52f));
         toggleText = AddCenteredLabel(toggleRoot.transform, "Label", "Tab  건설 메뉴 열기", 20, UiType.BodyMedium);
         AddPointerDown(toggleRoot, eventData =>
         {
@@ -108,11 +110,15 @@ public class HudBuildUi
         buildRoot = new GameObject("BuildPanel");
         RectTransform buildRt = buildRoot.AddComponent<RectTransform>();
         buildRt.SetParent(canvasRt, false);
-        buildRt.anchorMin = new Vector2(0f, 0f);
-        buildRt.anchorMax = new Vector2(0f, 1f);
+        buildRt.anchorMin = new Vector2(1f, 0f);
+        buildRt.anchorMax = new Vector2(1f, 1f);
         buildRt.pivot = new Vector2(0f, 1f);
-        buildRt.offsetMin = new Vector2(24f, 148f);
-        buildRt.offsetMax = new Vector2(444f, -328f);
+        buildRt.offsetMin = new Vector2(-384f, 168f);
+        buildRt.offsetMax = new Vector2(-24f, -190f);
+
+        Image buildFrame = buildRoot.AddComponent<Image>();
+        buildFrame.color = new Color(.57f, .39f, .22f, 1f);
+        UiSkin.Surface(buildFrame);
 
         VerticalLayoutGroup column = buildRoot.AddComponent<VerticalLayoutGroup>();
         column.spacing = 10f;
@@ -133,7 +139,7 @@ public class HudBuildUi
             }
         });
 
-        Image listFrame = UiFont.AddImage(buildRt, "TurretList", new Color(0.06f, 0.07f, 0.09f, 0.92f));
+        Image listFrame = UiFont.AddImage(buildRt, "TurretList", UiSkin.Navy);
         LayoutElement listLayout = listFrame.gameObject.AddComponent<LayoutElement>();
         listLayout.minHeight = 180f;
         listLayout.flexibleHeight = 1f;
@@ -153,31 +159,36 @@ public class HudBuildUi
         titleRt.anchoredPosition = new Vector2(0f, -8f);
         titleRt.sizeDelta = new Vector2(-24f, 28f);
 
+        var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+        RectTransform viewportRt = viewport.GetComponent<RectTransform>();
+        viewportRt.SetParent(listFrame.transform, false);
+        UiFont.Stretch(viewportRt);
+        viewportRt.offsetMax = new Vector2(0, -44);
+
         GameObject content = new GameObject("Content");
         RectTransform contentRt = content.AddComponent<RectTransform>();
-        contentRt.SetParent(listFrame.rectTransform, false);
+        contentRt.SetParent(viewportRt, false);
         contentRt.anchorMin = new Vector2(0f, 1f);
         contentRt.anchorMax = new Vector2(1f, 1f);
         contentRt.pivot = new Vector2(0.5f, 1f);
-        contentRt.anchoredPosition = new Vector2(0f, -40f);
+        contentRt.anchoredPosition = Vector2.zero;
         contentRt.sizeDelta = new Vector2(0f, 0f);
 
-        VerticalLayoutGroup list = content.AddComponent<VerticalLayoutGroup>();
-        list.padding = new RectOffset(10, 10, 4, 10);
-        list.spacing = 8f;
-        list.childControlWidth = true;
-        list.childControlHeight = true;
-        list.childForceExpandWidth = true;
-        list.childForceExpandHeight = false;
+        GridLayoutGroup list = content.AddComponent<GridLayoutGroup>();
+        list.padding = new RectOffset(12, 12, 8, 12);
+        list.spacing = new Vector2(12, 12);
+        list.cellSize = new Vector2(156, 178);
+        list.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        list.constraintCount = 2;
 
         ContentSizeFitter fitter = content.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         scroll.content = contentRt;
-        scroll.viewport = listFrame.rectTransform;
+        scroll.viewport = viewportRt;
         turretListContent = contentRt;
         BuildTurretRows();
 
-        skipRoot = CreatePanel("SkipPrep", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-24f, 142f), new Vector2(280f, 52f));
+        skipRoot = CreatePanel("SkipPrep", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-24f, 92f), new Vector2(360f, 60f));
         AddCenteredLabel(skipRoot.transform, "Label", "준비 시간 스킵", 20, UiType.BodyMedium);
         AddPointerDown(skipRoot, eventData =>
         {
@@ -188,7 +199,7 @@ public class HudBuildUi
             }
         });
 
-        storageRoot = CreatePanel("StorageBar", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 20f), new Vector2(-48f, 110f));
+        storageRoot = CreatePanel("StorageBar", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(24f, 20f), new Vector2(660f, 110f));
         Text storageTitle = UiFont.AddText(storageRoot.transform, "Title", "보관 포탑", 20, TextAnchor.MiddleLeft, textColor, UiType.Title);
         storageTitle.raycastTarget = false;
         RectTransform storageTitleRt = storageTitle.rectTransform;
@@ -265,7 +276,16 @@ public class HudBuildUi
             if (option == null || option.prefab == null)
                 continue;
 
-            GameObject row = CreateRow(turretListContent, "Turret_" + i, 48f);
+            GameObject row = CreateRow(turretListContent, "Turret_" + i, 178f);
+            RectTransform labelRt = row.GetComponentInChildren<Text>().rectTransform;
+            labelRt.anchorMin = new Vector2(0, 0);
+            labelRt.anchorMax = new Vector2(1, .36f);
+            labelRt.offsetMin = new Vector2(8, 6);
+            labelRt.offsetMax = new Vector2(-8, 0);
+            row.GetComponentInChildren<Text>().alignment = TextAnchor.MiddleCenter;
+            row.GetComponentInChildren<Text>().fontSize = 18;
+            row.GetComponentInChildren<Text>().horizontalOverflow = HorizontalWrapMode.Wrap;
+            UiSkin.Preview(row.transform, "Build_" + option.prefab.name, new Vector2(.5f, .68f), new Vector2(148, 110));
             Text label = row.GetComponentInChildren<Text>();
             turretLabels.Add(label);
             turretImages.Add(row.GetComponent<Image>());
@@ -310,16 +330,19 @@ public class HudBuildUi
         {
             TurretBuildOption option = turretEntries[i];
             bool dragging = placer.IsDragging && placer.DraggingPrefab == option.prefab;
+            bool full = placer.IsTurretCapReached;
             string label;
             if (dragging)
                 label = "배치 중...";
+            else if (full)
+                label = option.Label + "\n최대 배치  " + placer.TurretCount + "/" + placer.TurretMaxCount;
             else if (placer.IsPrepPhase)
-                label = option.Label + "  $" + option.cost;
+                label = option.Label + "\n$" + option.cost;
             else
-                label = option.Label + "  $" + option.cost + "  건설 " + option.buildTime.ToString("0.#") + "초";
+                label = option.Label + "\n$" + option.cost + "  건설 " + option.buildTime.ToString("0.#") + "초";
 
             turretLabels[i].text = label;
-            turretImages[i].color = dragging ? activeColor : rowColor;
+            turretImages[i].color = dragging ? activeColor : (full ? new Color(0.18f, 0.19f, 0.22f, 1f) : rowColor);
         }
     }
 
@@ -327,10 +350,12 @@ public class HudBuildUi
     {
         IReadOnlyList<StoredTurret> stored = placer.Stored;
         int count = stored != null ? stored.Count : 0;
-        if (count == lastStoredCount)
+        bool full = placer.IsTurretCapReached;
+        if (count == lastStoredCount && full == lastTurretCap)
             return;
 
         lastStoredCount = count;
+        lastTurretCap = full;
         for (int i = storageContent.childCount - 1; i >= 0; i--)
             Object.Destroy(storageContent.GetChild(i).gameObject);
 
@@ -353,7 +378,9 @@ public class HudBuildUi
             layout.preferredHeight = 48f;
 
             string extra = item.upgradeLevel > 1 ? "  +" + item.upgradeLevel : "";
-            row.GetComponentInChildren<Text>().text = item.Label + extra;
+            row.GetComponentInChildren<Text>().text = full ? item.Label + extra + "  최대" : item.Label + extra;
+            if (full)
+                row.GetComponent<Image>().color = new Color(0.18f, 0.19f, 0.22f, 1f);
             int index = i;
             AddPointerDown(row, eventData =>
             {
@@ -490,7 +517,7 @@ public class HudBuildUi
 
     Button CreateActionButtonGo(Transform parent, string name, string label, Vector2 min, Vector2 max, UnityEngine.Events.UnityAction click, out Text text)
     {
-        Image image = UiFont.AddImage(parent, name, Color.white);
+        Image image = UiFont.AddImage(parent, name, UiSkin.Blue);
         RectTransform rt = image.rectTransform;
         rt.anchorMin = min;
         rt.anchorMax = max;
@@ -503,7 +530,7 @@ public class HudBuildUi
             GameSfx.PlayUiClick();
             click();
         });
-        text = UiFont.AddText(rt, "Label", label, 16, TextAnchor.MiddleCenter, new Color(0.12f, 0.13f, 0.15f, 1f), UiType.BodyMedium);
+        text = UiFont.AddText(rt, "Label", label, 16, TextAnchor.MiddleCenter, Color.white, UiType.BodyMedium);
         text.raycastTarget = false;
         UiFont.Stretch(text.rectTransform);
         return button;

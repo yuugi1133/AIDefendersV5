@@ -4,6 +4,9 @@ using System.Text;
 using System.Globalization;
 using System.Collections;
 using System.Collections.Generic;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 [System.Serializable]
 public class DatasetAnimal
@@ -32,15 +35,15 @@ public class DatasetManager : MonoBehaviour
     public float raycastHeight = 80f;
     public float spawnHeightOffset = 0.05f;
     [Range(0.2f, 1f)]
-    public float spawnViewFill = 0.65f;
+    public float spawnViewFill = 0.8f;
 
     [Header("Camera")]
     public Vector2 cameraDistanceRange = new Vector2(30f, 80f);
     public Vector2 cameraPitchRange = new Vector2(15f, 75f);
     public Vector2 cameraYawRange = new Vector2(0f, 360f);
     public Vector2 cameraFovRange = new Vector2(35f, 70f);
-    public int maxSpawnAttempts = 30;
-    public int maxOverlapResolvePasses = 4;
+    public int maxSpawnAttempts = 40;
+    public int maxOverlapResolvePasses = 8;
 
     Vector3 lastCaptureOrigin;
     float lastSpawnRadius = 8f;
@@ -55,49 +58,82 @@ public class DatasetManager : MonoBehaviour
 
     readonly List<int> captureClassIds = new List<int>();
     readonly List<string[]> captureAnimationStates = new List<string[]>();
-    readonly List<string> datasetNames = new List<string>();
-    readonly List<DatasetSample> datasetSamples = new List<DatasetSample>();
-    readonly List<YoloBox> previewBoxes = new List<YoloBox>();
+    public readonly List<string> datasetNames = new List<string>();
+    public readonly List<DatasetSample> datasetSamples = new List<DatasetSample>();
+    public readonly List<YoloBox> previewBoxes = new List<YoloBox>();
     Texture2D screenTexture;
-    Texture2D previewTexture;
-    Texture2D pixelTexture;
-    Vector2 datasetListScroll;
-    Vector2 sampleListScroll;
-    Vector2 captureSettingsScroll;
-    Vector2 includedTargetsScroll;
-    Vector2 includedTerrainsScroll;
-    Vector2 prefabPickScroll;
-    Vector2 terrainPickScroll;
-    string selectedDataset;
-    string editingDataset;
-    string selectedSampleId;
-    bool editMode;
-    bool showNameDialog;
-    bool nameDialogIsRename;
-    bool showPrefabDialog;
-    bool showTerrainDialog;
-    bool showGenerateDialog;
-    bool showTrainDialog;
-    bool captureSettingsDirty;
-    string nameDialogValue = "";
-    string nameDialogError = "";
-    string generateDialogError = "";
-    string trainDialogError = "";
-    int pendingTrainCount = 70;
-    int pendingValCount = 20;
-    int pendingTestCount = 10;
-    int trainEpochs = 30;
-    int trainBatchSize = 32;
+    public Texture2D previewTexture;
+    public string selectedDataset;
+    public string editingDataset;
+    public string selectedSampleId;
+    [System.NonSerialized] public bool editMode;
+    [System.NonSerialized] public bool showNameDialog;
+    [System.NonSerialized] public bool nameDialogIsRename;
+    [System.NonSerialized] public bool showPrefabDialog;
+    [System.NonSerialized] public bool showTerrainDialog;
+    [System.NonSerialized] public bool showGenerateDialog;
+    [System.NonSerialized] public bool showManualCaptureDialog;
+    [System.NonSerialized] public bool showManualSettingsUi;
+    [System.NonSerialized] public bool showManualShotReview;
+    [System.NonSerialized] public bool showTrainDialog;
+    public bool captureSettingsDirty;
+    public string nameDialogValue = "";
+    public string nameDialogError = "";
+    public string generateDialogError = "";
+    public string manualCaptureError = "";
+    public string manualCaptureStatus = "";
+    public string manualSplit = "train";
+    public int manualPlaceClassIndex;
+    public string trainDialogError = "";
+    public float manualSunYaw;
+    float manualSunPitch = 50f;
+    float manualDistance = 50f;
+    float manualPitch = 35f;
+    float manualYaw = 40f;
+    float manualFov = 50f;
+    float manualFlyYaw;
+    float manualFlyPitch;
+    Camera viewCamera;
+    Camera manualCaptureCamera;
+    Vector3 manualHomePos;
+    Quaternion manualHomeRot;
+    bool datasetCameraWasEnabled = true;
+    GameObject manualGhost;
+    Target_Base manualGhostSource;
+    float manualGhostYaw;
+    bool manualGhostCanPlace;
+    int lastGhostScrollFrame = -1;
+    CCTVMoveLimit manualMoveLimit;
+    Bounds manualMoveBounds;
+    bool hasManualMoveBounds;
+    bool savedFog;
+    Color savedFogColor;
+    float savedFogDensity;
+    FogMode savedFogMode;
+    public string pendingManualSplit = "train";
+    public string pendingManualName = "";
+    HudDatasetUi hud;
+    string returnScene = "MainMenu";
+    public int pendingTrainCount = 70;
+    public int pendingValCount = 20;
+    public int pendingTestCount = 10;
+    public int trainEpochs = 30;
+    public int trainBatchSize = 32;
     int existingTrainImages;
     int existingValImages;
     Coroutine generateRoutine;
+    public string generateSplit = "";
+    public int generateSplitIndex;
+    public int generateSplitCount;
+    public int generateDone;
+    public int generateTotal;
     System.Diagnostics.Process trainProcess;
-    bool waitingForTrain;
-    bool showTrainResult;
-    TrainResultData trainResult;
+    [System.NonSerialized] public bool waitingForTrain;
+    [System.NonSerialized] public bool showTrainResult;
+    public TrainResultData trainResult;
 
     [System.Serializable]
-    class TrainResultData
+    public class TrainResultData
     {
         public string status = "";
         public string message = "";
@@ -110,19 +146,31 @@ public class DatasetManager : MonoBehaviour
         public float map50_95;
         public string lastWeights = "";
         public string bestWeights = "";
+        public int epoch;
+        public float trainAcc;
+        public float valAcc;
+        public float[] trainHistory;
+        public float[] valHistory;
     }
 
-    readonly List<Target_Base> includedTargets = new List<Target_Base>();
-    readonly List<Target_Base> prefabCatalog = new List<Target_Base>();
-    readonly List<GameObject> includedTerrains = new List<GameObject>();
-    readonly List<GameObject> terrainCatalog = new List<GameObject>();
-    readonly Dictionary<string, string> settingDrafts = new Dictionary<string, string>();
-    string lastFocusedSetting;
+    [System.NonSerialized] public int trainStopLevel;
+    System.DateTime lastTrainResultWrite;
+    float nextTrainPoll;
+
+    public readonly List<Target_Base> includedTargets = new List<Target_Base>();
+    public readonly List<Target_Base> datasetClasses = new List<Target_Base>();
+    public readonly List<Target_Base> createClassTargets = new List<Target_Base>();
+    public readonly List<Target_Base> prefabCatalog = new List<Target_Base>();
+    public readonly List<DatasetStageCatalog.Entry> stageCatalog = new List<DatasetStageCatalog.Entry>();
+    public readonly List<GameObject> includedTerrains = new List<GameObject>();
+    public readonly List<GameObject> terrainCatalog = new List<GameObject>();
+    public bool prefabPickForCreate;
+    public const string Yolov8nModelName = "yolov8n.pt";
 
     const string DatasetsFolderName = "Datasets";
     const float MinCameraDistance = 8f;
     const float MaxCameraDistance = 180f;
-    static readonly Color[] PreviewBoxColors =
+    public static readonly Color[] PreviewBoxColors =
     {
         new Color(0.25f, 1f, 0.35f),
         new Color(1f, 0.85f, 0.2f),
@@ -154,16 +202,17 @@ public class DatasetManager : MonoBehaviour
         public int testSampleCount;
         public int trainEpochs;
         public int trainBatchSize;
+        public string[] classPrefabPaths;
     }
 
-    class DatasetSample
+    public class DatasetSample
     {
         public string id;
         public string imagePath;
         public string labelPath;
     }
 
-    struct YoloBox
+    public struct YoloBox
     {
         public int classId;
         public float cx;
@@ -182,6 +231,10 @@ public class DatasetManager : MonoBehaviour
             HidePoolAnimals();
 
         RenderSettings.fogMode = FogMode.Exponential;
+        ResetHudFlags();
+        returnScene = SceneLoader.PreviousSceneName == "TurretLab" ? "TurretLab" : "MainMenu";
+
+        hud = new HudDatasetUi(this);
 
         if (datasetCamera == null || renderTexture == null)
             return;
@@ -194,420 +247,55 @@ public class DatasetManager : MonoBehaviour
         );
     }
 
+    public bool IsGenerating
+    {
+        get { return generateRoutine != null; }
+    }
+
+    void ResetHudFlags()
+    {
+        editMode = false;
+        showNameDialog = false;
+        showPrefabDialog = false;
+        showTerrainDialog = false;
+        showGenerateDialog = false;
+        showManualCaptureDialog = false;
+        showManualSettingsUi = false;
+        showManualShotReview = false;
+        showTrainDialog = false;
+        showTrainResult = false;
+        waitingForTrain = false;
+        trainStopLevel = 0;
+        nameDialogIsRename = false;
+        prefabPickForCreate = false;
+    }
+
     void Update()
     {
         if (waitingForTrain)
             PollTrainingProcess();
+        if (hud == null)
+        {
+            if (showManualCaptureDialog)
+                CloseManualCapture();
+            ResetHudFlags();
+            hud = new HudDatasetUi(this);
+        }
+        TickManualCapture();
+        hud.Tick();
+        if (captureSettingsDirty)
+            SaveCaptureSettings();
     }
 
     void OnDestroy()
     {
+        if (showManualCaptureDialog)
+            CloseManualCapture();
         ClearPreview();
-        if (pixelTexture != null)
-            Destroy(pixelTexture);
     }
 
-    void OnGUI()
+    public void ConfirmStartTraining()
     {
-        if (editMode)
-        {
-            DrawSampleEditor();
-            DrawCaptureSettingsPanel();
-        }
-        else
-            DrawDatasetSidebar();
-
-        if (waitingForTrain)
-            DrawTrainProgressDialog();
-        else if (showTrainResult)
-            DrawTrainResultDialog();
-        else if (showGenerateDialog)
-            DrawGenerateCountDialog();
-        else if (showTrainDialog)
-            DrawTrainDialog();
-        else if (showPrefabDialog)
-            DrawPrefabPickDialog();
-        else if (showTerrainDialog)
-            DrawTerrainPickDialog();
-        else if (showNameDialog)
-            DrawNameDialog();
-
-        if (captureSettingsDirty)
-            SaveCaptureSettings();
-
-        lastFocusedSetting = GUI.GetNameOfFocusedControl();
-    }
-
-    void DrawDatasetSidebar()
-    {
-        Rect panel = new Rect(12f, 12f, 320f, Screen.height - 24f);
-        GUI.Box(panel, "");
-
-        GUILayout.BeginArea(new Rect(panel.x + 8f, panel.y + 8f, panel.width - 16f, panel.height - 16f));
-        GUILayout.Label("데이터셋");
-
-        datasetListScroll = GUILayout.BeginScrollView(datasetListScroll, GUILayout.ExpandHeight(true));
-        if (datasetNames.Count == 0)
-            GUILayout.Label("비어 있음");
-
-        for (int i = 0; i < datasetNames.Count; i++)
-        {
-            string name = datasetNames[i];
-            GUILayout.BeginHorizontal();
-
-            bool selected = name == selectedDataset;
-            if (GUILayout.Toggle(selected, name, "Button", GUILayout.ExpandWidth(true), GUILayout.Height(24f)) && !selected)
-                selectedDataset = name;
-
-            if (GUILayout.Button("편집", GUILayout.Width(44f), GUILayout.Height(24f)))
-                EnterEditMode(name);
-
-            if (GUILayout.Button("삭제", GUILayout.Width(44f), GUILayout.Height(24f)))
-                DeleteDataset(name);
-
-            GUILayout.EndHorizontal();
-        }
-
-        GUILayout.EndScrollView();
-        GUILayout.Space(8f);
-
-        if (GUILayout.Button("새로 만들기", GUILayout.Height(32f)))
-            OpenNameDialog(false);
-
-        GUILayout.Space(6f);
-        if (GUILayout.Button("목록 새로고침", GUILayout.Height(24f)))
-            RefreshDatasetList();
-
-        GUILayout.EndArea();
-    }
-
-    void DrawSampleEditor()
-    {
-        Rect panel = new Rect(12f, 12f, 340f, Screen.height - 24f);
-        GUI.Box(panel, "");
-
-        GUILayout.BeginArea(new Rect(panel.x + 8f, panel.y + 8f, panel.width - 16f, panel.height - 16f));
-
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(string.IsNullOrEmpty(editingDataset) ? "샘플" : editingDataset);
-        if (GUILayout.Button("뒤로", GUILayout.Width(52f), GUILayout.Height(24f)))
-            ExitEditMode();
-        GUILayout.EndHorizontal();
-
-        GUILayout.Label("샘플 리스트");
-        sampleListScroll = GUILayout.BeginScrollView(sampleListScroll, GUILayout.ExpandHeight(true));
-        if (datasetSamples.Count == 0)
-            GUILayout.Label("비어 있음");
-
-        for (int i = 0; i < datasetSamples.Count; i++)
-        {
-            DatasetSample sample = datasetSamples[i];
-            GUILayout.BeginHorizontal();
-
-            bool selected = sample.id == selectedSampleId;
-            if (GUILayout.Toggle(selected, sample.id, "Button", GUILayout.ExpandWidth(true), GUILayout.Height(24f)) && !selected)
-                SelectSample(sample);
-
-            if (GUILayout.Button("삭제", GUILayout.Width(44f), GUILayout.Height(24f)))
-                DeleteSample(sample);
-
-            GUILayout.EndHorizontal();
-        }
-
-        GUILayout.EndScrollView();
-        GUILayout.Space(6f);
-        GUILayout.Label("미리보기");
-        float previewHeight = Mathf.Clamp(Screen.height * 0.32f, 160f, 280f);
-        Rect previewBox = GUILayoutUtility.GetRect(1f, previewHeight, GUILayout.ExpandWidth(true));
-        DrawSamplePreview(previewBox);
-
-        GUILayout.EndArea();
-    }
-
-    void DrawCaptureSettingsPanel()
-    {
-        float width = 360f;
-        Rect panel = new Rect(Screen.width - width - 12f, 12f, width, Screen.height - 24f);
-        GUI.Box(panel, "");
-        GUILayout.BeginArea(new Rect(panel.x + 8f, panel.y + 8f, panel.width - 16f, panel.height - 16f));
-
-        GUILayout.Label("샘플 생성 설정");
-        GUILayout.Space(4f);
-        GUILayout.Label("대상");
-        includedTargetsScroll = GUILayout.BeginScrollView(includedTargetsScroll, GUILayout.Height(110f));
-        if (includedTargets.Count == 0)
-            GUILayout.Label("비어 있음");
-
-        int removeTarget = -1;
-        for (int i = 0; i < includedTargets.Count; i++)
-        {
-            Target_Base target = includedTargets[i];
-            if (target == null)
-            {
-                removeTarget = i;
-                continue;
-            }
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(target.HudLabel, GUILayout.ExpandWidth(true));
-            if (GUILayout.Button("삭제", GUILayout.Width(44f), GUILayout.Height(22f)))
-                removeTarget = i;
-
-            GUILayout.EndHorizontal();
-        }
-
-        if (removeTarget >= 0)
-        {
-            includedTargets.RemoveAt(removeTarget);
-            captureSettingsDirty = true;
-            RefreshAutoCaptureFraming();
-        }
-
-        GUILayout.EndScrollView();
-        if (GUILayout.Button("대상 추가", GUILayout.Height(26f)))
-        {
-            RefreshPrefabCatalog();
-            showPrefabDialog = true;
-            showTerrainDialog = false;
-        }
-
-        GUILayout.Space(8f);
-        GUILayout.Label("지형");
-        includedTerrainsScroll = GUILayout.BeginScrollView(includedTerrainsScroll, GUILayout.Height(90f));
-        if (includedTerrains.Count == 0)
-            GUILayout.Label("비어 있음");
-
-        int removeTerrain = -1;
-        for (int i = 0; i < includedTerrains.Count; i++)
-        {
-            GameObject terrain = includedTerrains[i];
-            if (terrain == null)
-            {
-                removeTerrain = i;
-                continue;
-            }
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(terrain.name, GUILayout.ExpandWidth(true));
-            if (GUILayout.Button("삭제", GUILayout.Width(44f), GUILayout.Height(22f)))
-                removeTerrain = i;
-
-            GUILayout.EndHorizontal();
-        }
-
-        if (removeTerrain >= 0)
-        {
-            includedTerrains.RemoveAt(removeTerrain);
-            captureSettingsDirty = true;
-        }
-
-        GUILayout.EndScrollView();
-        if (GUILayout.Button("지형 추가", GUILayout.Height(26f)))
-        {
-            RefreshTerrainCatalog();
-            showTerrainDialog = true;
-            showPrefabDialog = false;
-        }
-
-        GUILayout.Space(8f);
-        captureSettingsScroll = GUILayout.BeginScrollView(captureSettingsScroll, GUILayout.ExpandHeight(true));
-        bool minCountCommitted = DrawIntSetting("최소 대상 수", ref minCaptureCount, 1, 32);
-        bool maxCountCommitted = DrawIntSetting("최대 대상 수", ref maxCaptureCount, 1, 32);
-        if (minCountCommitted || maxCountCommitted)
-        {
-            FixIntPair(ref minCaptureCount, ref maxCaptureCount, minCountCommitted);
-            RefreshAutoCaptureFraming();
-        }
-
-        DrawIntSetting("JPEG 품질", ref jpegQuality, 1, 100);
-        GUILayout.Space(6f);
-        GUILayout.Label("카메라 거리·간격은 표적 크기와 최대 수량으로 자동 조절됩니다.");
-        GUILayout.Label(string.Format(
-            CultureInfo.InvariantCulture,
-            "현재 거리 {0:0}–{1:0}",
-            cameraDistanceRange.x,
-            cameraDistanceRange.y));
-        GUILayout.EndScrollView();
-
-        GUILayout.Space(6f);
-        bool canGenerate = CanGenerateSamples();
-        GUI.enabled = canGenerate;
-        if (GUILayout.Button("샘플 생성하기", GUILayout.Height(36f)))
-        {
-            SaveCaptureSettings();
-            generateDialogError = "";
-            showGenerateDialog = true;
-            showTrainDialog = false;
-            showPrefabDialog = false;
-            showTerrainDialog = false;
-        }
-        GUI.enabled = true;
-        if (!canGenerate && generateRoutine == null && !waitingForTrain)
-            GUILayout.Label("대상과 지형을 각각 하나 이상 추가하세요.");
-
-        GUILayout.Space(4f);
-        bool canTrain = CanTrainModel();
-        GUI.enabled = canTrain;
-        if (GUILayout.Button("모델 학습시키기", GUILayout.Height(36f)))
-        {
-            RefreshSampleList();
-            SaveCaptureSettings();
-            trainDialogError = "";
-            showTrainDialog = true;
-            showGenerateDialog = false;
-            showPrefabDialog = false;
-            showTerrainDialog = false;
-        }
-        GUI.enabled = true;
-        if (!canTrain && generateRoutine == null && !waitingForTrain)
-            GUILayout.Label("학습(train)과 검증(val) 샘플이 각각 하나 이상 있어야 합니다.");
-
-        GUILayout.EndArea();
-    }
-
-    void DrawPrefabPickDialog()
-    {
-        Rect box = CenterDialogRect(420f, 360f);
-        GUI.Box(box, "대상 프리팹 선택");
-        GUILayout.BeginArea(new Rect(box.x + 16f, box.y + 28f, box.width - 32f, box.height - 36f));
-        GUILayout.Label("포함할 Target_Base 프리팹");
-
-        prefabPickScroll = GUILayout.BeginScrollView(prefabPickScroll, GUILayout.ExpandHeight(true));
-        int shown = 0;
-        for (int i = 0; i < prefabCatalog.Count; i++)
-        {
-            Target_Base prefab = prefabCatalog[i];
-            if (prefab == null || includedTargets.Contains(prefab))
-                continue;
-
-            shown++;
-            if (GUILayout.Button(prefab.HudLabel, GUILayout.Height(26f)))
-            {
-                includedTargets.Add(prefab);
-                captureSettingsDirty = true;
-                showPrefabDialog = false;
-                RefreshAutoCaptureFraming();
-            }
-        }
-
-        if (shown == 0)
-            GUILayout.Label("추가할 프리팹이 없습니다.");
-
-        GUILayout.EndScrollView();
-        if (GUILayout.Button("취소", GUILayout.Height(28f)))
-            showPrefabDialog = false;
-
-        GUILayout.EndArea();
-    }
-
-    void DrawTerrainPickDialog()
-    {
-        Rect box = CenterDialogRect(420f, 320f);
-        GUI.Box(box, "지형 선택");
-        GUILayout.BeginArea(new Rect(box.x + 16f, box.y + 28f, box.width - 32f, box.height - 36f));
-        GUILayout.Label("Terrains 안의 지형");
-
-        terrainPickScroll = GUILayout.BeginScrollView(terrainPickScroll, GUILayout.ExpandHeight(true));
-        int shown = 0;
-        for (int i = 0; i < terrainCatalog.Count; i++)
-        {
-            GameObject terrain = terrainCatalog[i];
-            if (terrain == null || includedTerrains.Contains(terrain))
-                continue;
-
-            shown++;
-            if (GUILayout.Button(terrain.name, GUILayout.Height(26f)))
-            {
-                includedTerrains.Add(terrain);
-                captureSettingsDirty = true;
-                showTerrainDialog = false;
-            }
-        }
-
-        if (shown == 0)
-            GUILayout.Label("추가할 지형이 없습니다.");
-
-        GUILayout.EndScrollView();
-        if (GUILayout.Button("취소", GUILayout.Height(28f)))
-            showTerrainDialog = false;
-
-        GUILayout.EndArea();
-    }
-
-    void DrawGenerateCountDialog()
-    {
-        Rect box = CenterDialogRect(400f, 250f);
-        GUI.Box(box, "샘플 수");
-        GUILayout.BeginArea(new Rect(box.x + 16f, box.y + 28f, box.width - 32f, box.height - 36f));
-        GUILayout.Label("생성할 샘플 수");
-        DrawIntSetting("학습(train)", ref pendingTrainCount, 0, 100000);
-        DrawIntSetting("검증(val)", ref pendingValCount, 0, 100000);
-        DrawIntSetting("테스트(test)", ref pendingTestCount, 0, 100000);
-
-        if (!string.IsNullOrEmpty(generateDialogError))
-        {
-            Color previous = GUI.color;
-            GUI.color = new Color(1f, 0.45f, 0.4f);
-            GUILayout.Label(generateDialogError);
-            GUI.color = previous;
-        }
-
-        GUILayout.FlexibleSpace();
-        GUILayout.BeginHorizontal();
-        GUI.enabled = generateRoutine == null;
-        if (GUILayout.Button("최종 생성하기", GUILayout.Height(28f)))
-            ConfirmGenerateCounts();
-        GUI.enabled = true;
-
-        if (GUILayout.Button("취소", GUILayout.Height(28f)))
-            showGenerateDialog = false;
-        GUILayout.EndHorizontal();
-        GUILayout.EndArea();
-    }
-
-    void DrawTrainDialog()
-    {
-        Rect box = CenterDialogRect(420f, 250f);
-        GUI.Box(box, "모델 학습");
-        GUILayout.BeginArea(new Rect(box.x + 16f, box.y + 28f, box.width - 32f, box.height - 36f));
-        GUILayout.Label("학습 설정");
-        GUILayout.Label("Python " + PythonRuntime.RequiredVersionLabel + " 가상환경으로 학습합니다.");
-        DrawIntSetting("에포크", ref trainEpochs, 1, 1000);
-        DrawIntSetting("배치 사이즈", ref trainBatchSize, 1, 256);
-
-        bool venvReady = PythonRuntime.IsVenvReady();
-        if (!venvReady)
-        {
-            Color previous = GUI.color;
-            GUI.color = new Color(1f, 0.45f, 0.4f);
-            GUILayout.Label("가상환경(.venv)이 없습니다. 메인 메뉴에서 라이브러리를 설치하세요.");
-            GUI.color = previous;
-        }
-
-        if (!string.IsNullOrEmpty(trainDialogError))
-        {
-            Color previous = GUI.color;
-            GUI.color = new Color(1f, 0.45f, 0.4f);
-            GUILayout.Label(trainDialogError);
-            GUI.color = previous;
-        }
-
-        GUILayout.FlexibleSpace();
-        GUILayout.BeginHorizontal();
-        GUI.enabled = generateRoutine == null && !waitingForTrain && venvReady;
-        if (GUILayout.Button("학습 시작", GUILayout.Height(28f)))
-            ConfirmStartTraining();
-        GUI.enabled = true;
-
-        if (GUILayout.Button("취소", GUILayout.Height(28f)))
-            showTrainDialog = false;
-        GUILayout.EndHorizontal();
-        GUILayout.EndArea();
-    }
-
-    void ConfirmStartTraining()
-    {
-        ApplySettingDrafts();
         RefreshSampleList();
         if (!CanTrainModel())
         {
@@ -626,58 +314,6 @@ public class DatasetManager : MonoBehaviour
         StartYoloTraining();
     }
 
-    void DrawTrainProgressDialog()
-    {
-        Rect box = CenterDialogRect(420f, 150f);
-        GUI.Box(box, "모델 학습");
-        GUILayout.BeginArea(new Rect(box.x + 16f, box.y + 28f, box.width - 32f, box.height - 36f));
-        GUILayout.Label("모델 학습 진행 중");
-        GUILayout.Label("CMD 창에서 에포크 진행률을 확인할 수 있습니다.");
-        GUILayout.FlexibleSpace();
-        GUILayout.Label("완료되면 결과가 이 창에 표시됩니다.");
-        GUILayout.EndArea();
-    }
-
-    void DrawTrainResultDialog()
-    {
-        Rect screen = new Rect(0f, 0f, Screen.width, Screen.height);
-        Rect box = CenterDialogRect(480f, 300f);
-        GUI.Button(screen, GUIContent.none, GUIStyle.none);
-        GUI.Box(box, trainResult != null && trainResult.status == "failed" ? "학습 실패" : "학습 완료");
-
-        GUILayout.BeginArea(new Rect(box.x + 16f, box.y + 28f, box.width - 32f, box.height - 80f));
-        if (trainResult == null)
-        {
-            GUILayout.Label("결과 파일을 읽지 못했습니다.");
-        }
-        else if (trainResult.status == "failed")
-        {
-            GUILayout.Label(string.IsNullOrEmpty(trainResult.message) ? "학습에 실패했습니다." : trainResult.message);
-        }
-        else
-        {
-            GUILayout.Label(string.IsNullOrEmpty(trainResult.message) ? "학습이 완료되었습니다." : trainResult.message);
-            GUILayout.Space(8f);
-            GUILayout.Label("Precision: " + trainResult.precision.ToString("0.###", CultureInfo.InvariantCulture));
-            GUILayout.Label("Recall: " + trainResult.recall.ToString("0.###", CultureInfo.InvariantCulture));
-            GUILayout.Label("mAP50: " + trainResult.map50.ToString("0.###", CultureInfo.InvariantCulture));
-            GUILayout.Label("mAP50-95: " + trainResult.map50_95.ToString("0.###", CultureInfo.InvariantCulture));
-            GUILayout.Space(8f);
-            if (!string.IsNullOrEmpty(trainResult.lastWeights))
-                GUILayout.Label("last.pt: " + Path.GetFileName(trainResult.lastWeights));
-            if (!string.IsNullOrEmpty(trainResult.bestWeights))
-                GUILayout.Label("best.pt: " + Path.GetFileName(trainResult.bestWeights));
-        }
-        GUILayout.EndArea();
-
-        Rect closeRect = new Rect(box.x + 16f, box.y + box.height - 42f, box.width - 32f, 28f);
-        if (GUI.Button(closeRect, "닫기"))
-        {
-            showTrainResult = false;
-            trainResult = null;
-        }
-    }
-
     void StartYoloTraining()
     {
         string datasetName = string.IsNullOrEmpty(editingDataset) ? selectedDataset : editingDataset;
@@ -691,36 +327,134 @@ public class DatasetManager : MonoBehaviour
         string datasetFolder = GetDatasetFolder(datasetName);
         string yamlPath = Path.Combine(datasetFolder, "dataset.yaml");
         string resultPath = Path.Combine(datasetFolder, "train_result.json");
+        string stopPath = GetTrainStopPath(datasetName);
         string weightsDir = Path.Combine(datasetFolder, "weights");
         Directory.CreateDirectory(weightsDir);
         WriteDatasetYaml(datasetFolder);
+        DeleteFileIfExists(stopPath);
+        trainStopLevel = 0;
+        lastTrainResultWrite = default(System.DateTime);
+        nextTrainPoll = 0f;
+        trainResult = new TrainResultData();
+        trainResult.status = "running";
+        trainResult.message = "학습하는 중";
+        trainResult.dataset = datasetName;
+        trainResult.epochs = trainEpochs;
+        trainResult.batch = trainBatchSize;
+        trainResult.epoch = 0;
+        trainResult.trainHistory = new float[0];
+        trainResult.valHistory = new float[0];
+        File.WriteAllText(resultPath, JsonUtility.ToJson(trainResult, true));
 
         System.Diagnostics.Process process;
         string error;
         if (!PythonRuntime.TryStartYoloTraining(
             yamlPath,
+            Yolov8nModelName,
             trainEpochs,
             trainBatchSize,
             datasetName,
             resultPath,
             weightsDir,
+            stopPath,
             out process,
             out error))
         {
             trainDialogError = error;
             showTrainDialog = true;
+            waitingForTrain = false;
             return;
         }
 
         trainProcess = process;
         waitingForTrain = true;
         showTrainResult = false;
-        trainResult = null;
         Debug.Log("YOLO 학습 시작: " + PythonRuntime.GetVenvPython() + " " + yamlPath);
+    }
+
+    public void RequestTrainStop()
+    {
+        if (!waitingForTrain)
+            return;
+
+        if (trainStopLevel < 1)
+        {
+            trainStopLevel = 1;
+            string datasetName = string.IsNullOrEmpty(editingDataset) ? selectedDataset : editingDataset;
+            string stopPath = GetTrainStopPath(datasetName);
+            try
+            {
+                File.WriteAllText(stopPath, "stop");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("학습 중지 플래그를 쓰지 못했습니다: " + e.Message);
+            }
+
+            if (trainResult != null)
+            {
+                trainResult.status = "stopping";
+                trainResult.message = "다음 에포크에서 중지합니다.";
+            }
+            return;
+        }
+
+        trainStopLevel = 2;
+        KillTrainProcess();
+        if (trainResult != null)
+        {
+            trainResult.status = "stopped";
+            trainResult.message = "학습을 강제 중지했습니다.";
+        }
+    }
+
+    string GetTrainStopPath(string datasetName)
+    {
+        if (string.IsNullOrEmpty(datasetName))
+            datasetName = editingDataset;
+        if (string.IsNullOrEmpty(datasetName))
+            datasetName = selectedDataset;
+        return Path.Combine(GetDatasetFolder(datasetName), "train_stop.txt");
+    }
+
+    string GetTrainResultPath()
+    {
+        string datasetName = string.IsNullOrEmpty(editingDataset) ? selectedDataset : editingDataset;
+        if (string.IsNullOrEmpty(datasetName))
+            return "";
+        return Path.Combine(GetDatasetFolder(datasetName), "train_result.json");
+    }
+
+    void KillTrainProcess()
+    {
+        if (trainProcess == null)
+            return;
+        try
+        {
+            int pid = trainProcess.Id;
+            System.Diagnostics.Process killer = System.Diagnostics.Process.Start(
+                "taskkill",
+                "/PID " + pid.ToString(CultureInfo.InvariantCulture) + " /T /F");
+            if (killer != null)
+                killer.WaitForExit(4000);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("학습 프로세스 종료 실패: " + e.Message);
+            try
+            {
+                if (!trainProcess.HasExited)
+                    trainProcess.Kill();
+            }
+            catch (System.Exception)
+            {
+            }
+        }
     }
 
     void PollTrainingProcess()
     {
+        ReadTrainProgress();
         try
         {
             if (trainProcess != null && !trainProcess.HasExited)
@@ -733,6 +467,31 @@ public class DatasetManager : MonoBehaviour
         FinishTraining();
     }
 
+    void ReadTrainProgress()
+    {
+        if (Time.unscaledTime < nextTrainPoll)
+            return;
+        nextTrainPoll = Time.unscaledTime + 0.4f;
+
+        string resultPath = GetTrainResultPath();
+        if (string.IsNullOrEmpty(resultPath) || !File.Exists(resultPath))
+            return;
+
+        try
+        {
+            System.DateTime write = File.GetLastWriteTimeUtc(resultPath);
+            if (write == lastTrainResultWrite && trainResult != null)
+                return;
+            lastTrainResultWrite = write;
+            TrainResultData parsed = JsonUtility.FromJson<TrainResultData>(File.ReadAllText(resultPath));
+            if (parsed != null)
+                trainResult = parsed;
+        }
+        catch (System.Exception)
+        {
+        }
+    }
+
     void FinishTraining()
     {
         waitingForTrain = false;
@@ -743,6 +502,7 @@ public class DatasetManager : MonoBehaviour
         }
 
         string datasetName = string.IsNullOrEmpty(editingDataset) ? selectedDataset : editingDataset;
+        DeleteFileIfExists(GetTrainStopPath(datasetName));
         string resultPath = string.IsNullOrEmpty(datasetName)
             ? ""
             : Path.Combine(GetDatasetFolder(datasetName), "train_result.json");
@@ -766,20 +526,33 @@ public class DatasetManager : MonoBehaviour
             trainResult.status = "failed";
             trainResult.message = "학습 결과 파일을 찾지 못했습니다.";
         }
-        else if (trainResult.status == "running")
+        else if (trainResult.status == "running" || trainResult.status == "stopping")
         {
-            trainResult.status = "failed";
-            trainResult.message = "학습이 끝났지만 완료 결과를 받지 못했습니다.";
+            if (trainStopLevel > 0)
+            {
+                trainResult.status = "stopped";
+                trainResult.message = trainStopLevel > 1
+                    ? "학습을 강제 중지했습니다."
+                    : "학습을 중지하고 가중치를 저장했습니다.";
+            }
+            else
+            {
+                trainResult.status = "failed";
+                trainResult.message = "학습이 끝났지만 완료 결과를 받지 못했습니다.";
+            }
         }
 
+        if (trainResult != null && trainResult.status != "failed")
+            CopyTrainWeights(datasetName, trainResult);
+
+        trainStopLevel = 0;
         showTrainResult = true;
         RefreshAssets();
         Debug.Log("YOLO 학습 종료: " + trainResult.status + " " + trainResult.message);
     }
 
-    void ConfirmGenerateCounts()
+    public void ConfirmGenerateCounts()
     {
-        ApplySettingDrafts();
         if (!CanGenerateSamples())
         {
             generateDialogError = "대상과 지형을 각각 하나 이상 추가하세요.";
@@ -802,271 +575,7 @@ public class DatasetManager : MonoBehaviour
         generateRoutine = StartCoroutine(GenerateDataset());
     }
 
-    Rect CenterDialogRect(float width, float height)
-    {
-        return new Rect(
-            (Screen.width - width) * 0.5f,
-            (Screen.height - height) * 0.5f,
-            width,
-            height
-        );
-    }
-
-    bool DrawIntSetting(string label, ref int value, int min, int max)
-    {
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(label, GUILayout.Width(120f));
-        bool commit = DrawDeferredTextField("int:" + label, value.ToString(), out string text);
-        GUILayout.EndHorizontal();
-        if (!commit)
-            return false;
-
-        int parsed;
-        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed))
-        {
-            settingDrafts["int:" + label] = value.ToString();
-            return false;
-        }
-
-        parsed = Mathf.Clamp(parsed, min, max);
-        if (parsed == value)
-        {
-            settingDrafts["int:" + label] = value.ToString();
-            return false;
-        }
-
-        value = parsed;
-        settingDrafts["int:" + label] = value.ToString();
-        captureSettingsDirty = true;
-        return true;
-    }
-
-    void DrawFloatSetting(string label, ref float value, float min, float max)
-    {
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(label, GUILayout.Width(120f));
-        bool commit = DrawDeferredTextField(
-            "float:" + label,
-            value.ToString("0.###", CultureInfo.InvariantCulture),
-            out string text);
-        GUILayout.EndHorizontal();
-        if (!commit)
-            return;
-
-        float parsed;
-        if (!float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed))
-        {
-            settingDrafts["float:" + label] = value.ToString("0.###", CultureInfo.InvariantCulture);
-            return;
-        }
-
-        parsed = Mathf.Clamp(parsed, min, max);
-        if (Mathf.Abs(parsed - value) < 0.0001f)
-        {
-            settingDrafts["float:" + label] = value.ToString("0.###", CultureInfo.InvariantCulture);
-            return;
-        }
-
-        value = parsed;
-        settingDrafts["float:" + label] = value.ToString("0.###", CultureInfo.InvariantCulture);
-        captureSettingsDirty = true;
-    }
-
-    void DrawRangeSetting(string label, ref Vector2 range, float min, float max)
-    {
-        GUILayout.Label(label);
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("최소", GUILayout.Width(36f));
-        bool minCommit = DrawDeferredTextField(
-            "range:" + label + ":min",
-            range.x.ToString("0.###", CultureInfo.InvariantCulture),
-            out string minText);
-        GUILayout.Label("최대", GUILayout.Width(36f));
-        bool maxCommit = DrawDeferredTextField(
-            "range:" + label + ":max",
-            range.y.ToString("0.###", CultureInfo.InvariantCulture),
-            out string maxText);
-        GUILayout.EndHorizontal();
-
-        if (!minCommit && !maxCommit)
-            return;
-
-        bool changed = false;
-        if (minCommit)
-        {
-            float parsedMin;
-            if (float.TryParse(minText, NumberStyles.Float, CultureInfo.InvariantCulture, out parsedMin))
-            {
-                parsedMin = Mathf.Clamp(parsedMin, min, max);
-                if (Mathf.Abs(parsedMin - range.x) > 0.0001f)
-                {
-                    range.x = parsedMin;
-                    changed = true;
-                }
-            }
-        }
-
-        if (maxCommit)
-        {
-            float parsedMax;
-            if (float.TryParse(maxText, NumberStyles.Float, CultureInfo.InvariantCulture, out parsedMax))
-            {
-                parsedMax = Mathf.Clamp(parsedMax, min, max);
-                if (Mathf.Abs(parsedMax - range.y) > 0.0001f)
-                {
-                    range.y = parsedMax;
-                    changed = true;
-                }
-            }
-        }
-
-        if (range.y < range.x)
-        {
-            if (minCommit)
-                range.y = range.x;
-            else
-                range.x = range.y;
-            changed = true;
-        }
-
-        settingDrafts["range:" + label + ":min"] = range.x.ToString("0.###", CultureInfo.InvariantCulture);
-        settingDrafts["range:" + label + ":max"] = range.y.ToString("0.###", CultureInfo.InvariantCulture);
-
-        if (changed)
-            captureSettingsDirty = true;
-    }
-
-    bool DrawDeferredTextField(string id, string committedDisplay, out string text)
-    {
-        if (!settingDrafts.ContainsKey(id))
-            settingDrafts[id] = committedDisplay;
-
-        bool wasFocused = lastFocusedSetting == id;
-        GUI.SetNextControlName(id);
-        settingDrafts[id] = GUILayout.TextField(settingDrafts[id]);
-        text = settingDrafts[id];
-
-        bool focused = GUI.GetNameOfFocusedControl() == id;
-        if (!focused && !wasFocused)
-        {
-            settingDrafts[id] = committedDisplay;
-            text = committedDisplay;
-            return false;
-        }
-
-        bool enter = focused &&
-            Event.current.type == EventType.KeyDown &&
-            (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter);
-        if (enter)
-            Event.current.Use();
-
-        return enter || (wasFocused && !focused);
-    }
-
-    void FixIntPair(ref int minValue, ref int maxValue, bool editedMin)
-    {
-        if (maxValue >= minValue)
-            return;
-
-        if (editedMin)
-            maxValue = minValue;
-        else
-            minValue = maxValue;
-
-        captureSettingsDirty = true;
-    }
-
-    void ApplySettingDrafts()
-    {
-        ApplyIntDraft("int:최소 대상 수", ref minCaptureCount, 1, 32);
-        ApplyIntDraft("int:최대 대상 수", ref maxCaptureCount, 1, 32);
-        if (maxCaptureCount < minCaptureCount)
-            maxCaptureCount = minCaptureCount;
-
-        ApplyIntDraft("int:JPEG 품질", ref jpegQuality, 1, 100);
-        ApplyIntDraft("int:학습(train)", ref pendingTrainCount, 0, 100000);
-        ApplyIntDraft("int:검증(val)", ref pendingValCount, 0, 100000);
-        ApplyIntDraft("int:테스트(test)", ref pendingTestCount, 0, 100000);
-        ApplyIntDraft("int:에포크", ref trainEpochs, 1, 1000);
-        ApplyIntDraft("int:배치 사이즈", ref trainBatchSize, 1, 256);
-        EnsureCaptureDefaults();
-    }
-
-    void ApplyIntDraft(string id, ref int value, int min, int max)
-    {
-        string text;
-        if (!settingDrafts.TryGetValue(id, out text))
-            return;
-
-        int parsed;
-        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed))
-            return;
-
-        value = Mathf.Clamp(parsed, min, max);
-        settingDrafts[id] = value.ToString();
-    }
-
-    void ApplyFloatDraft(string id, ref float value, float min, float max)
-    {
-        string text;
-        if (!settingDrafts.TryGetValue(id, out text))
-            return;
-
-        float parsed;
-        if (!float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed))
-            return;
-
-        value = Mathf.Clamp(parsed, min, max);
-        settingDrafts[id] = value.ToString("0.###", CultureInfo.InvariantCulture);
-    }
-
-    void ApplyRangeDraft(string label, ref Vector2 range, float min, float max)
-    {
-        ApplyFloatDraft("range:" + label + ":min", ref range.x, min, max);
-        ApplyFloatDraft("range:" + label + ":max", ref range.y, min, max);
-        if (range.y < range.x)
-            range.y = range.x;
-        settingDrafts["range:" + label + ":min"] = range.x.ToString("0.###", CultureInfo.InvariantCulture);
-        settingDrafts["range:" + label + ":max"] = range.y.ToString("0.###", CultureInfo.InvariantCulture);
-    }
-
-    void DrawNameDialog()
-    {
-        float width = 360f;
-        float height = 150f;
-        Rect box = new Rect(
-            (Screen.width - width) * 0.5f,
-            (Screen.height - height) * 0.5f,
-            width,
-            height
-        );
-
-        GUI.Box(box, nameDialogIsRename ? "데이터셋 이름 변경" : "새 데이터셋");
-        GUILayout.BeginArea(new Rect(box.x + 16f, box.y + 28f, box.width - 32f, box.height - 36f));
-        GUILayout.Label("이름");
-        GUI.SetNextControlName("DatasetNameField");
-        nameDialogValue = GUILayout.TextField(nameDialogValue);
-
-        if (!string.IsNullOrEmpty(nameDialogError))
-        {
-            Color previous = GUI.color;
-            GUI.color = new Color(1f, 0.45f, 0.4f);
-            GUILayout.Label(nameDialogError);
-            GUI.color = previous;
-        }
-
-        GUILayout.FlexibleSpace();
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button(nameDialogIsRename ? "변경" : "생성", GUILayout.Height(28f)))
-            ConfirmNameDialog();
-
-        if (GUILayout.Button("취소", GUILayout.Height(28f)))
-            showNameDialog = false;
-        GUILayout.EndHorizontal();
-        GUILayout.EndArea();
-    }
-
-    void OpenNameDialog(bool rename, string targetName = null)
+    public void OpenNameDialog(bool rename, string targetName = null)
     {
         nameDialogIsRename = rename;
         if (rename && !string.IsNullOrEmpty(targetName))
@@ -1074,10 +583,71 @@ public class DatasetManager : MonoBehaviour
 
         nameDialogValue = rename ? selectedDataset : "";
         nameDialogError = "";
+        createClassTargets.Clear();
+        prefabPickForCreate = false;
+        if (!rename)
+        {
+            RefreshPrefabCatalog();
+            RefreshStageCatalog();
+        }
+
         showNameDialog = true;
+        showGenerateDialog = false;
+        showManualCaptureDialog = false;
+        showTrainDialog = false;
+        showPrefabDialog = false;
+        showTerrainDialog = false;
     }
 
-    void EnterEditMode(string datasetName)
+    public void OpenPrefabPick(bool forCreate)
+    {
+        prefabPickForCreate = forCreate;
+        RefreshPrefabCatalog();
+        showPrefabDialog = true;
+        if (!forCreate)
+            showTerrainDialog = false;
+    }
+
+    public void AddCreateClassTarget(Target_Base target)
+    {
+        if (target == null || createClassTargets.Contains(target))
+            return;
+        createClassTargets.Add(target);
+    }
+
+    public void RemoveCreateClassTarget(int index)
+    {
+        if (index < 0 || index >= createClassTargets.Count)
+            return;
+        createClassTargets.RemoveAt(index);
+    }
+
+    public void AddCreateClassesFromStage(DatasetStageCatalog.Entry stage)
+    {
+        List<Target_Base> fromStage = new List<Target_Base>();
+        DatasetStageCatalog.CollectTargets(stage, fromStage);
+        for (int i = 0; i < fromStage.Count; i++)
+            AddCreateClassTarget(fromStage[i]);
+    }
+
+    public void RefreshStageCatalog()
+    {
+        stageCatalog.Clear();
+        for (int i = 0; i < DatasetStageCatalog.Stages.Length; i++)
+        {
+            DatasetStageCatalog.Entry entry = DatasetStageCatalog.Stages[i];
+            if (entry == null || DatasetStageCatalog.LoadStageData(entry) == null)
+                continue;
+            stageCatalog.Add(entry);
+        }
+    }
+
+    public bool IsDatasetClass(Target_Base target)
+    {
+        return target != null && datasetClasses.Contains(target);
+    }
+
+    public void EnterEditMode(string datasetName)
     {
         datasetName = SanitizeDatasetName(datasetName);
         if (string.IsNullOrEmpty(datasetName))
@@ -1091,6 +661,7 @@ public class DatasetManager : MonoBehaviour
         showPrefabDialog = false;
         showTerrainDialog = false;
         showGenerateDialog = false;
+        showManualCaptureDialog = false;
         showTrainDialog = false;
         ClearPreview();
         EnsureCaptureDefaults();
@@ -1103,7 +674,26 @@ public class DatasetManager : MonoBehaviour
         RefreshSampleList();
     }
 
-    void ExitEditMode()
+    public void GoBack()
+    {
+        if (waitingForTrain || generateRoutine != null)
+            return;
+        if (showNameDialog || showPrefabDialog || showTerrainDialog || showGenerateDialog || showTrainDialog || showTrainResult)
+            return;
+        if (showManualCaptureDialog)
+        {
+            CloseManualCapture();
+            return;
+        }
+        if (editMode)
+        {
+            ExitEditMode();
+            return;
+        }
+        SceneLoader.Load(string.IsNullOrEmpty(returnScene) ? "MainMenu" : returnScene);
+    }
+
+    public void ExitEditMode()
     {
         SaveCaptureSettings();
         editMode = false;
@@ -1113,6 +703,9 @@ public class DatasetManager : MonoBehaviour
         showTerrainDialog = false;
         showGenerateDialog = false;
         showTrainDialog = false;
+        if (showManualCaptureDialog)
+            CloseManualCapture();
+        ClearCaptureTargets();
         ClearPreview();
         RefreshDatasetList();
     }
@@ -1128,8 +721,8 @@ public class DatasetManager : MonoBehaviour
             cameraDistanceRange.x = MinCameraDistance;
         if (cameraDistanceRange.y < cameraDistanceRange.x)
             cameraDistanceRange.y = cameraDistanceRange.x;
-        if (spawnViewFill < 0.2f)
-            spawnViewFill = 0.65f;
+        if (spawnViewFill < 0.55f)
+            spawnViewFill = 0.8f;
         if (pendingTrainCount < 0)
             pendingTrainCount = 0;
         if (pendingValCount < 0)
@@ -1149,7 +742,7 @@ public class DatasetManager : MonoBehaviour
         cameraFovRange = new Vector2(40f, 62f);
     }
 
-    void RefreshAutoCaptureFraming()
+    public void RefreshAutoCaptureFraming()
     {
         ApplyInternalCameraDefaults();
 
@@ -1173,20 +766,21 @@ public class DatasetManager : MonoBehaviour
             return;
 
         float typical = typicalSum / counted;
-        float spacing = Mathf.Clamp(typical * 0.75f, 1.2f, 18f);
+        float spacing = Mathf.Clamp(typical * 1.45f, 2f, 28f);
+        spawnViewFill = 0.8f;
         int crowd = Mathf.Max(1, maxCaptureCount);
-        float packRadius = 0.55f * typical * Mathf.Sqrt(crowd);
-        packRadius += spacing * Mathf.Max(0f, Mathf.Sqrt(crowd) - 1f) * 0.5f;
+        float packRadius = 0.9f * typical * Mathf.Sqrt(crowd);
+        packRadius += spacing * Mathf.Max(0f, Mathf.Sqrt(crowd) - 1f) * 0.75f;
 
         float wideFov = cameraFovRange.y;
         float narrowFov = cameraFovRange.x;
         float closeLargest = DistanceForViewFill(largest, wideFov, 0.52f);
         float farSmallest = DistanceForViewFill(smallest, narrowFov, 0.11f);
-        float fill = Mathf.Clamp(spawnViewFill, 0.2f, 1f);
+        float fill = Mathf.Clamp(spawnViewFill, 0.55f, 1f);
         float packDist = packRadius / Mathf.Max(0.001f, Mathf.Tan(0.5f * wideFov * Mathf.Deg2Rad) * fill);
 
-        float minD = Mathf.Max(MinCameraDistance, closeLargest, packDist * 0.85f);
-        float maxD = Mathf.Max(minD * 1.35f, farSmallest, packDist * 1.45f);
+        float minD = Mathf.Max(MinCameraDistance, closeLargest, packDist);
+        float maxD = Mathf.Max(minD * 1.45f, farSmallest, packDist * 1.55f);
         maxD = Mathf.Min(MaxCameraDistance, maxD);
         minD = Mathf.Min(minD, maxD);
 
@@ -1259,7 +853,7 @@ public class DatasetManager : MonoBehaviour
             terrainsRoot = root.transform;
     }
 
-    void RefreshPrefabCatalog()
+    public void RefreshPrefabCatalog()
     {
         prefabCatalog.Clear();
 #if UNITY_EDITOR
@@ -1285,7 +879,7 @@ public class DatasetManager : MonoBehaviour
         prefabCatalog.Sort((a, b) => string.CompareOrdinal(a.HudLabel, b.HudLabel));
     }
 
-    void RefreshTerrainCatalog()
+    public void RefreshTerrainCatalog()
     {
         terrainCatalog.Clear();
         ResolveTerrainsRoot();
@@ -1297,10 +891,6 @@ public class DatasetManager : MonoBehaviour
             Transform child = terrainsRoot.GetChild(i);
             if (child == null)
                 continue;
-
-            if (child.GetComponent<Terrain>() == null && child.GetComponent<TerrainCollider>() == null)
-                continue;
-
             terrainCatalog.Add(child.gameObject);
         }
 
@@ -1318,8 +908,8 @@ public class DatasetManager : MonoBehaviour
     void LoadCaptureSettings()
     {
         includedTargets.Clear();
+        datasetClasses.Clear();
         includedTerrains.Clear();
-        settingDrafts.Clear();
 
         string path = GetCaptureSettingsPath();
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
@@ -1356,15 +946,16 @@ public class DatasetManager : MonoBehaviour
 
         EnsureCaptureDefaults();
 
-        if (data.targetPrefabPaths != null)
-        {
-            for (int i = 0; i < data.targetPrefabPaths.Length; i++)
-            {
-                Target_Base target = LoadTargetPrefab(data.targetPrefabPaths[i]);
-                if (target != null && !includedTargets.Contains(target))
-                    includedTargets.Add(target);
-            }
-        }
+        string[] classPaths = data.classPrefabPaths != null && data.classPrefabPaths.Length > 0
+            ? data.classPrefabPaths
+            : data.targetPrefabPaths;
+        AppendTargets(classPaths, datasetClasses);
+        AppendTargets(data.targetPrefabPaths, includedTargets);
+        if (datasetClasses.Count == 0 && includedTargets.Count > 0)
+            datasetClasses.AddRange(includedTargets);
+        FilterIncludedToDatasetClasses();
+        if (includedTargets.Count == 0)
+            includedTargets.AddRange(datasetClasses);
 
         if (data.terrainNames != null)
         {
@@ -1380,9 +971,8 @@ public class DatasetManager : MonoBehaviour
         RefreshAutoCaptureFraming();
     }
 
-    void SaveCaptureSettings()
+    public void SaveCaptureSettings()
     {
-        ApplySettingDrafts();
         string path = GetCaptureSettingsPath();
         captureSettingsDirty = false;
         if (string.IsNullOrEmpty(path))
@@ -1393,9 +983,8 @@ public class DatasetManager : MonoBehaviour
             Directory.CreateDirectory(folder);
 
         CaptureSettingsData data = new CaptureSettingsData();
-        data.targetPrefabPaths = new string[includedTargets.Count];
-        for (int i = 0; i < includedTargets.Count; i++)
-            data.targetPrefabPaths[i] = GetPrefabAssetPath(includedTargets[i]);
+        data.classPrefabPaths = PathsForTargets(datasetClasses);
+        data.targetPrefabPaths = PathsForTargets(includedTargets);
 
         data.terrainNames = new string[includedTerrains.Count];
         for (int i = 0; i < includedTerrains.Count; i++)
@@ -1422,6 +1011,37 @@ public class DatasetManager : MonoBehaviour
 
         File.WriteAllText(path, JsonUtility.ToJson(data, true));
         WriteDatasetYaml(GetDatasetFolder(editingDataset));
+    }
+
+    string[] PathsForTargets(List<Target_Base> targets)
+    {
+        string[] paths = new string[targets.Count];
+        for (int i = 0; i < targets.Count; i++)
+            paths[i] = GetPrefabAssetPath(targets[i]);
+        return paths;
+    }
+
+    void AppendTargets(string[] paths, List<Target_Base> dest)
+    {
+        if (paths == null)
+            return;
+        for (int i = 0; i < paths.Length; i++)
+        {
+            Target_Base target = LoadTargetPrefab(paths[i]);
+            if (target != null && !dest.Contains(target))
+                dest.Add(target);
+        }
+    }
+
+    void FilterIncludedToDatasetClasses()
+    {
+        if (datasetClasses.Count == 0)
+            return;
+        for (int i = includedTargets.Count - 1; i >= 0; i--)
+        {
+            if (!datasetClasses.Contains(includedTargets[i]))
+                includedTargets.RemoveAt(i);
+        }
     }
 
     string GetPrefabAssetPath(Target_Base target)
@@ -1482,7 +1102,7 @@ public class DatasetManager : MonoBehaviour
         return null;
     }
 
-    void RefreshSampleList()
+    public void RefreshSampleList()
     {
         datasetSamples.Clear();
         existingTrainImages = 0;
@@ -1594,13 +1214,25 @@ public class DatasetManager : MonoBehaviour
         return null;
     }
 
-    void SelectSample(DatasetSample sample)
+    public void HighlightSample(DatasetSample sample)
+    {
+        if (sample == null)
+            return;
+        selectedSampleId = sample.id;
+    }
+
+    public void SelectSample(DatasetSample sample)
     {
         if (sample == null)
             return;
 
         selectedSampleId = sample.id;
         LoadSamplePreview(sample);
+    }
+
+    public void OpenSamplePreview(DatasetSample sample)
+    {
+        SelectSample(sample);
     }
 
     void LoadSamplePreview(DatasetSample sample)
@@ -1617,6 +1249,101 @@ public class DatasetManager : MonoBehaviour
         }
 
         ParseLabelFile(sample.labelPath);
+    }
+
+    public void SetPreviewBoxCorner(int index, int corner, Vector2 uiUv)
+    {
+        if (index < 0 || index >= previewBoxes.Count)
+            return;
+
+        YoloBox box = previewBoxes[index];
+        float xMin = Mathf.Clamp01(box.cx - box.w * 0.5f);
+        float xMax = Mathf.Clamp01(box.cx + box.w * 0.5f);
+        float yMin = Mathf.Clamp01(1f - (box.cy + box.h * 0.5f));
+        float yMax = Mathf.Clamp01(1f - (box.cy - box.h * 0.5f));
+        float x = Mathf.Clamp01(uiUv.x);
+        float y = Mathf.Clamp01(uiUv.y);
+        const float minSize = 0.008f;
+
+        switch (corner)
+        {
+            case 0:
+                xMin = Mathf.Min(x, xMax - minSize);
+                yMin = Mathf.Min(y, yMax - minSize);
+                break;
+            case 1:
+                xMax = Mathf.Max(x, xMin + minSize);
+                yMin = Mathf.Min(y, yMax - minSize);
+                break;
+            case 2:
+                xMin = Mathf.Min(x, xMax - minSize);
+                yMax = Mathf.Max(y, yMin + minSize);
+                break;
+            default:
+                xMax = Mathf.Max(x, xMin + minSize);
+                yMax = Mathf.Max(y, yMin + minSize);
+                break;
+        }
+
+        box.cx = (xMin + xMax) * 0.5f;
+        box.w = Mathf.Max(minSize, xMax - xMin);
+        box.cy = 1f - (yMin + yMax) * 0.5f;
+        box.h = Mathf.Max(minSize, yMax - yMin);
+        previewBoxes[index] = box;
+    }
+
+    public void SavePreviewBoxes()
+    {
+        DatasetSample sample = FindSampleById(selectedSampleId);
+        if (sample == null)
+            return;
+
+        if (string.IsNullOrEmpty(sample.labelPath) && !string.IsNullOrEmpty(sample.imagePath))
+        {
+            string imagePath = sample.imagePath.Replace('\\', '/');
+            string labelPath = imagePath
+                .Replace("/images/", "/labels/")
+                .Replace(".jpg", ".txt")
+                .Replace(".jpeg", ".txt")
+                .Replace(".png", ".txt");
+            string folder = Path.GetDirectoryName(labelPath);
+            if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+            sample.labelPath = labelPath;
+        }
+
+        if (string.IsNullOrEmpty(sample.labelPath))
+            return;
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < previewBoxes.Count; i++)
+        {
+            YoloBox box = previewBoxes[i];
+            if (builder.Length > 0)
+                builder.Append('\n');
+            builder.AppendFormat(
+                CultureInfo.InvariantCulture,
+                "{0} {1:0.######} {2:0.######} {3:0.######} {4:0.######}",
+                box.classId,
+                Mathf.Clamp01(box.cx),
+                Mathf.Clamp01(box.cy),
+                Mathf.Clamp01(box.w),
+                Mathf.Clamp01(box.h));
+        }
+
+        File.WriteAllText(sample.labelPath, builder.ToString());
+    }
+
+    DatasetSample FindSampleById(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+            return null;
+        for (int i = 0; i < datasetSamples.Count; i++)
+        {
+            if (datasetSamples[i] != null && datasetSamples[i].id == id)
+                return datasetSamples[i];
+        }
+        return null;
     }
 
     void ParseLabelFile(string labelPath)
@@ -1652,96 +1379,36 @@ public class DatasetManager : MonoBehaviour
         }
     }
 
-    void DrawSamplePreview(Rect area)
-    {
-        GUI.Box(area, "");
-        Rect inner = new Rect(area.x + 6f, area.y + 6f, area.width - 12f, area.height - 12f);
-        if (inner.width <= 1f || inner.height <= 1f)
-            return;
-
-        if (previewTexture == null)
-        {
-            GUI.Label(inner, string.IsNullOrEmpty(selectedSampleId) ? "샘플을 선택하세요." : "이미지 없음");
-            return;
-        }
-
-        Rect imageRect = FitRect(inner, previewTexture.width, previewTexture.height);
-        GUI.DrawTexture(imageRect, previewTexture, ScaleMode.StretchToFill);
-
-        for (int i = 0; i < previewBoxes.Count; i++)
-        {
-            YoloBox box = previewBoxes[i];
-            float x = (box.cx - box.w * 0.5f) * imageRect.width;
-            float y = (box.cy - box.h * 0.5f) * imageRect.height;
-            float w = box.w * imageRect.width;
-            float h = box.h * imageRect.height;
-            Rect boxRect = new Rect(imageRect.x + x, imageRect.y + y, w, h);
-            Color color = PreviewBoxColors[Mathf.Abs(box.classId) % PreviewBoxColors.Length];
-            DrawRectOutline(boxRect, color, 2f);
-
-            string caption = box.classId.ToString();
-            Rect labelRect = new Rect(boxRect.x, Mathf.Max(imageRect.y, boxRect.y - 16f), 80f, 16f);
-            Color previous = GUI.color;
-            GUI.color = color;
-            GUI.Label(labelRect, caption);
-            GUI.color = previous;
-        }
-    }
-
-    Rect FitRect(Rect bounds, int width, int height)
-    {
-        if (width <= 0 || height <= 0)
-            return bounds;
-
-        float aspect = width / (float)height;
-        float boundsAspect = bounds.width / bounds.height;
-        if (aspect > boundsAspect)
-        {
-            float h = bounds.width / aspect;
-            return new Rect(bounds.x, bounds.y + (bounds.height - h) * 0.5f, bounds.width, h);
-        }
-
-        float w = bounds.height * aspect;
-        return new Rect(bounds.x + (bounds.width - w) * 0.5f, bounds.y, w, bounds.height);
-    }
-
-    void DrawRectOutline(Rect rect, Color color, float thickness)
-    {
-        DrawFillRect(new Rect(rect.x, rect.y, rect.width, thickness), color);
-        DrawFillRect(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
-        DrawFillRect(new Rect(rect.x, rect.y, thickness, rect.height), color);
-        DrawFillRect(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
-    }
-
-    void DrawFillRect(Rect rect, Color color)
-    {
-        Color previous = GUI.color;
-        GUI.color = color;
-        GUI.DrawTexture(rect, GetPixelTexture());
-        GUI.color = previous;
-    }
-
-    Texture2D GetPixelTexture()
-    {
-        if (pixelTexture == null)
-        {
-            pixelTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-            pixelTexture.SetPixel(0, 0, Color.white);
-            pixelTexture.Apply();
-        }
-
-        return pixelTexture;
-    }
-
-    void DeleteSample(DatasetSample sample)
+    public void DeleteSample(DatasetSample sample)
     {
         if (sample == null)
             return;
+        DeleteSamples(new[] { sample });
+    }
 
-        DeleteAssetOrFile(sample.imagePath);
-        DeleteAssetOrFile(sample.labelPath);
+    public void DeleteAllSamples()
+    {
+        DeleteSamples(datasetSamples.ToArray());
+    }
 
-        if (selectedSampleId == sample.id)
+    public void DeleteSamples(IList<DatasetSample> samples)
+    {
+        if (samples == null || samples.Count == 0)
+            return;
+
+        bool clearPreview = false;
+        for (int i = 0; i < samples.Count; i++)
+        {
+            DatasetSample sample = samples[i];
+            if (sample == null)
+                continue;
+            DeleteAssetOrFile(sample.imagePath);
+            DeleteAssetOrFile(sample.labelPath);
+            if (selectedSampleId == sample.id)
+                clearPreview = true;
+        }
+
+        if (clearPreview)
         {
             selectedSampleId = null;
             ClearPreview();
@@ -1789,7 +1456,7 @@ public class DatasetManager : MonoBehaviour
         previewTexture = null;
     }
 
-    void ConfirmNameDialog()
+    public void ConfirmNameDialog()
     {
         string name = SanitizeDatasetName(nameDialogValue);
         if (string.IsNullOrEmpty(name))
@@ -1803,9 +1470,16 @@ public class DatasetManager : MonoBehaviour
             if (!RenameDataset(selectedDataset, name))
                 return;
         }
-        else if (!CreateDataset(name))
+        else
         {
-            return;
+            if (createClassTargets.Count == 0)
+            {
+                nameDialogError = "대상을 하나 이상 추가하세요.";
+                return;
+            }
+
+            if (!CreateDataset(name))
+                return;
         }
 
         showNameDialog = false;
@@ -1824,7 +1498,17 @@ public class DatasetManager : MonoBehaviour
         string folder = GetDatasetFolder(name);
         Directory.CreateDirectory(folder);
         CreateDirectories(folder);
-        WriteDatasetYaml(folder);
+
+        datasetClasses.Clear();
+        datasetClasses.AddRange(createClassTargets);
+        includedTargets.Clear();
+        includedTargets.AddRange(datasetClasses);
+
+        string previousEditing = editingDataset;
+        editingDataset = name;
+        SaveCaptureSettings();
+        editingDataset = previousEditing;
+
         RefreshAssets();
         Debug.Log("데이터셋 생성: " + folder);
         return true;
@@ -1921,7 +1605,7 @@ public class DatasetManager : MonoBehaviour
         return "Assets/" + DatasetsFolderName + "/" + name;
     }
 
-    void DeleteDataset(string name)
+    public void DeleteDataset(string name)
     {
         name = SanitizeDatasetName(name);
         if (string.IsNullOrEmpty(name))
@@ -1947,6 +1631,37 @@ public class DatasetManager : MonoBehaviour
 
         RefreshDatasetList();
         RefreshAssets();
+    }
+
+    void CopyTrainWeights(string datasetName, TrainResultData result)
+    {
+        if (string.IsNullOrEmpty(datasetName) || result == null)
+            return;
+
+        string destDir = Path.Combine(GetDatasetFolder(datasetName), "weights");
+        Directory.CreateDirectory(destDir);
+        string srcDir = Path.Combine(PythonRuntime.GetPythonServerDir(), "models", datasetName, "train", "weights");
+        if (string.IsNullOrEmpty(result.lastWeights) || !File.Exists(result.lastWeights))
+            result.lastWeights = CopyWeightIfExists(Path.Combine(srcDir, "last.pt"), destDir);
+        if (string.IsNullOrEmpty(result.bestWeights) || !File.Exists(result.bestWeights))
+            result.bestWeights = CopyWeightIfExists(Path.Combine(srcDir, "best.pt"), destDir);
+    }
+
+    static string CopyWeightIfExists(string src, string destDir)
+    {
+        if (string.IsNullOrEmpty(src) || !File.Exists(src))
+            return "";
+        try
+        {
+            string dest = Path.Combine(destDir, Path.GetFileName(src));
+            File.Copy(src, dest, true);
+            return dest;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("가중치 복사 실패: " + src + "\n" + e.Message);
+            return src;
+        }
     }
 
     void DeleteDirectoryIfExists(string path)
@@ -1992,7 +1707,7 @@ public class DatasetManager : MonoBehaviour
             entry.Attributes = FileAttributes.Normal;
     }
 
-    void RefreshDatasetList()
+    public void RefreshDatasetList()
     {
         datasetNames.Clear();
         string root = GetDatasetsRoot();
@@ -2064,7 +1779,7 @@ public class DatasetManager : MonoBehaviour
         if (string.IsNullOrEmpty(datasetName))
         {
             Debug.LogWarning("데이터셋을 먼저 선택하세요.");
-            generateRoutine = null;
+            ClearGenerateProgress();
             yield break;
         }
 
@@ -2085,20 +1800,34 @@ public class DatasetManager : MonoBehaviour
         CreateDirectories(root);
         WriteDatasetYaml(root);
 
-        yield return CaptureSplit("train", pendingTrainCount);
-        yield return CaptureSplit("val", pendingValCount);
-        yield return CaptureSplit("test", pendingTestCount);
+        generateTotal = Mathf.Max(0, pendingTrainCount) + Mathf.Max(0, pendingValCount) + Mathf.Max(0, pendingTestCount);
+        generateDone = 0;
+        generateSplit = "";
+        generateSplitIndex = 0;
+        generateSplitCount = 0;
+
+        int captureRun = FindNextAutoCaptureRun(root);
+        yield return CaptureSplit("train", pendingTrainCount, captureRun);
+        yield return CaptureSplit("val", pendingValCount, captureRun);
+        yield return CaptureSplit("test", pendingTestCount, captureRun);
 
         ClearCaptureTargets();
         RefreshSampleList();
-        generateRoutine = null;
+        ClearGenerateProgress();
         Debug.Log("Dataset generation complete!");
     }
 
-    IEnumerator CaptureSplit(string split, int count)
+    IEnumerator CaptureSplit(string split, int count, int captureRun)
     {
+        if (count <= 0)
+            yield break;
+
+        generateSplit = split;
+        generateSplitCount = count;
+        generateSplitIndex = 0;
         for (int i = 0; i < count; i++)
         {
+            generateSplitIndex = i + 1;
             RandomizeScene();
             RandomizeCaptureAnimations();
             ResolveScreenOverlaps();
@@ -2107,8 +1836,61 @@ public class DatasetManager : MonoBehaviour
             ResolveScreenOverlaps();
             yield return new WaitForEndOfFrame();
 
-            CaptureAndSave(i, split);
+            CaptureAndSave(i, split, captureRun);
+            generateDone++;
         }
+    }
+
+    void ClearGenerateProgress()
+    {
+        generateRoutine = null;
+        generateSplit = "";
+        generateSplitIndex = 0;
+        generateSplitCount = 0;
+        generateDone = 0;
+        generateTotal = 0;
+    }
+
+    int FindNextAutoCaptureRun(string datasetFolder)
+    {
+        int maxRun = 0;
+        string[] splits = { "train", "val", "test" };
+        for (int s = 0; s < splits.Length; s++)
+        {
+            string imageDir = Path.Combine(datasetFolder, "images", splits[s]);
+            if (!Directory.Exists(imageDir))
+                continue;
+
+            string[] files = Directory.GetFiles(imageDir, "sample_*.jpg");
+            for (int i = 0; i < files.Length; i++)
+            {
+                int run;
+                if (TryParseAutoSampleRun(Path.GetFileNameWithoutExtension(files[i]), out run) && run > maxRun)
+                    maxRun = run;
+            }
+        }
+
+        return maxRun + 1;
+    }
+
+    static bool TryParseAutoSampleRun(string name, out int run)
+    {
+        run = 0;
+        if (string.IsNullOrEmpty(name) || !name.StartsWith("sample_", System.StringComparison.Ordinal))
+            return false;
+
+        string rest = name.Substring("sample_".Length);
+        int separator = rest.IndexOf('_');
+        if (separator < 0)
+        {
+            int index;
+            if (!int.TryParse(rest, NumberStyles.Integer, CultureInfo.InvariantCulture, out index))
+                return false;
+            run = 1;
+            return true;
+        }
+
+        return int.TryParse(rest.Substring(0, separator), NumberStyles.Integer, CultureInfo.InvariantCulture, out run);
     }
 
     string GetDatasetRoot()
@@ -2197,10 +1979,11 @@ public class DatasetManager : MonoBehaviour
 
     List<string> GetIncludedClassLabels()
     {
+        List<Target_Base> source = datasetClasses.Count > 0 ? datasetClasses : includedTargets;
         List<string> labels = new List<string>();
-        for (int i = 0; i < includedTargets.Count; i++)
+        for (int i = 0; i < source.Count; i++)
         {
-            string label = GetClassLabel(includedTargets[i]);
+            string label = GetClassLabel(source[i]);
             if (string.IsNullOrEmpty(label) || labels.Contains(label))
                 continue;
 
@@ -2226,7 +2009,7 @@ public class DatasetManager : MonoBehaviour
         return target.gameObject.name.Replace("(Clone)", "").Trim();
     }
 
-    int GetClassIdForTarget(Target_Base source)
+    public int GetClassIdForTarget(Target_Base source)
     {
         string label = GetClassLabel(source);
         if (string.IsNullOrEmpty(label))
@@ -2237,7 +2020,7 @@ public class DatasetManager : MonoBehaviour
         return index >= 0 ? index : 0;
     }
 
-    bool CanGenerateSamples()
+    public bool CanGenerateSamples()
     {
         if (generateRoutine != null || waitingForTrain)
             return false;
@@ -2245,12 +2028,1056 @@ public class DatasetManager : MonoBehaviour
         return HasIncludedTarget() && HasIncludedTerrain();
     }
 
-    bool CanTrainModel()
+    public bool CanTrainModel()
     {
         if (generateRoutine != null || waitingForTrain)
             return false;
 
         return existingTrainImages > 0 && existingValImages > 0;
+    }
+
+    public bool CanManualCapture()
+    {
+        if (generateRoutine != null || waitingForTrain)
+            return false;
+        if (datasetCamera == null || renderTexture == null)
+            return false;
+        if (datasetClasses.Count == 0 && includedTargets.Count == 0)
+            return false;
+        return terrainCatalog.Count > 0 || includedTerrains.Count > 0;
+    }
+
+    public List<Target_Base> GetManualClassPool()
+    {
+        EnsureManualPools();
+        List<Target_Base> pool = new List<Target_Base>();
+        AppendUniqueTargets(datasetClasses, pool);
+        if (pool.Count == 0)
+            AppendUniqueTargets(includedTargets, pool);
+        if (pool.Count == 0)
+            AppendUniqueTargets(prefabCatalog, pool);
+        if (pool.Count == 0 && animalPool != null)
+        {
+            for (int i = 0; i < animalPool.Length; i++)
+            {
+                if (animalPool[i] != null)
+                    AppendUniqueTarget(animalPool[i].animal, pool);
+            }
+        }
+        return pool;
+    }
+
+    public List<GameObject> GetManualTerrainPool()
+    {
+        EnsureManualPools();
+        List<GameObject> pool = new List<GameObject>();
+        AppendUniqueTerrains(terrainCatalog, pool);
+        AppendUniqueTerrains(includedTerrains, pool);
+        return pool;
+    }
+
+    void EnsureManualPools()
+    {
+        StripNullTargets(datasetClasses);
+        StripNullTargets(includedTargets);
+        if (datasetClasses.Count == 0 && includedTargets.Count == 0)
+        {
+            RefreshPrefabCatalog();
+            LoadCaptureSettings();
+            StripNullTargets(datasetClasses);
+            StripNullTargets(includedTargets);
+        }
+
+        if (terrainCatalog.Count == 0)
+            RefreshTerrainCatalog();
+        StripNullTerrains(terrainCatalog);
+        StripNullTerrains(includedTerrains);
+        if (terrainCatalog.Count == 0)
+            CollectSceneTerrains(terrainCatalog);
+    }
+
+    static void StripNullTargets(List<Target_Base> list)
+    {
+        if (list == null)
+            return;
+        for (int i = list.Count - 1; i >= 0; i--)
+        {
+            if (list[i] == null)
+                list.RemoveAt(i);
+        }
+    }
+
+    static void StripNullTerrains(List<GameObject> list)
+    {
+        if (list == null)
+            return;
+        for (int i = list.Count - 1; i >= 0; i--)
+        {
+            if (list[i] == null)
+                list.RemoveAt(i);
+        }
+    }
+
+    void CollectSceneTerrains(List<GameObject> dest)
+    {
+        ResolveTerrainsRoot();
+        if (terrainsRoot != null)
+        {
+            for (int i = 0; i < terrainsRoot.childCount; i++)
+            {
+                Transform child = terrainsRoot.GetChild(i);
+                if (child != null)
+                    AppendUniqueTerrain(child.gameObject, dest);
+            }
+        }
+
+        Terrain[] terrains = Terrain.activeTerrains;
+        for (int i = 0; i < terrains.Length; i++)
+        {
+            if (terrains[i] != null)
+                AppendUniqueTerrain(terrains[i].gameObject, dest);
+        }
+    }
+
+    static void AppendUniqueTerrain(GameObject terrain, List<GameObject> dest)
+    {
+        if (terrain != null && !dest.Contains(terrain))
+            dest.Add(terrain);
+    }
+
+    static void AppendUniqueTargets(List<Target_Base> source, List<Target_Base> dest)
+    {
+        if (source == null)
+            return;
+        for (int i = 0; i < source.Count; i++)
+            AppendUniqueTarget(source[i], dest);
+    }
+
+    static void AppendUniqueTarget(Target_Base target, List<Target_Base> dest)
+    {
+        if (target != null && !dest.Contains(target))
+            dest.Add(target);
+    }
+
+    static void AppendUniqueTerrains(List<GameObject> source, List<GameObject> dest)
+    {
+        if (source == null)
+            return;
+        for (int i = 0; i < source.Count; i++)
+        {
+            GameObject terrain = source[i];
+            if (terrain != null && !dest.Contains(terrain))
+                dest.Add(terrain);
+        }
+    }
+
+    public void OpenAutoGenerate()
+    {
+        SaveCaptureSettings();
+        generateDialogError = "";
+        showGenerateDialog = true;
+        showManualCaptureDialog = false;
+        showTrainDialog = false;
+        showPrefabDialog = false;
+        showTerrainDialog = false;
+    }
+
+    public bool IsManualDragging
+    {
+        get { return manualGhost != null; }
+    }
+
+    public void OpenManualCapture()
+    {
+        if (!CanManualCapture())
+        {
+            manualCaptureError = "클래스와 지형, 촬영 카메라가 있어야 합니다.";
+            return;
+        }
+
+        SaveCaptureSettings();
+        RefreshPrefabCatalog();
+        RefreshTerrainCatalog();
+        EnsureManualPools();
+        HidePoolAnimals();
+        ClearCaptureTargets();
+        ActivateTerrain(FirstAvailableTerrain());
+        Vector3 origin = GetCaptureOrigin();
+        lastCaptureOrigin = origin;
+        manualDistance = Mathf.Clamp(cameraDistanceRange.x + 12f, MinCameraDistance, MaxCameraDistance);
+        manualPitch = 35f;
+        manualYaw = 40f;
+        manualFov = 50f;
+        manualPlaceClassIndex = 0;
+        manualSplit = "train";
+        manualCaptureError = "";
+        manualCaptureStatus = "WASD로 이동하고 마우스로 바라보세요. Tab으로 촬영 설정을 엽니다.";
+        showManualCaptureDialog = true;
+        showManualSettingsUi = true;
+        showManualShotReview = false;
+        showGenerateDialog = false;
+        showTrainDialog = false;
+        showPrefabDialog = false;
+        showTerrainDialog = false;
+        EnsureScreenTexture();
+        SaveManualFogState();
+        BeginManualView(origin);
+        ReadManualSunFromLight();
+        RefreshManualMoveBounds();
+    }
+
+    public void CloseManualCapture()
+    {
+        CancelManualGhost();
+        DiscardManualShot();
+        RestoreManualFogState();
+        EndManualView();
+        showManualCaptureDialog = false;
+        showManualSettingsUi = false;
+        showManualShotReview = false;
+        ClearCaptureTargets();
+        manualCaptureError = "";
+        SetCursorLocked(false);
+    }
+
+    public void ToggleManualSettingsUi()
+    {
+        if (!showManualCaptureDialog || showManualShotReview)
+            return;
+        CancelManualGhost();
+        showManualSettingsUi = !showManualSettingsUi;
+    }
+
+    public void SetManualTerrain(GameObject terrain)
+    {
+        if (terrain == null)
+            return;
+        ActivateTerrain(terrain);
+        lastCaptureOrigin = GetCaptureOrigin();
+        RefreshManualMoveBounds();
+        ClampManualViewPosition();
+    }
+
+    public void AddRandomManualFog()
+    {
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.Exponential;
+        RenderSettings.fogColor = new Color(
+            Random.Range(0.65f, 1f),
+            Random.Range(0.65f, 1f),
+            Random.Range(0.7f, 1f));
+        RenderSettings.fogDensity = Random.Range(0.004f, 0.028f);
+        manualCaptureStatus = "안개를 추가했습니다.";
+    }
+
+    public void ResetManualFog()
+    {
+        RestoreManualFogState();
+        manualCaptureStatus = "안개를 초기화했습니다.";
+    }
+
+    void SaveManualFogState()
+    {
+        savedFog = RenderSettings.fog;
+        savedFogColor = RenderSettings.fogColor;
+        savedFogDensity = RenderSettings.fogDensity;
+        savedFogMode = RenderSettings.fogMode;
+    }
+
+    void RestoreManualFogState()
+    {
+        RenderSettings.fog = savedFog;
+        RenderSettings.fogColor = savedFogColor;
+        RenderSettings.fogDensity = savedFogDensity;
+        RenderSettings.fogMode = savedFogMode;
+    }
+
+    public void SetManualSunYaw(float yaw)
+    {
+        manualSunYaw = Mathf.Repeat(yaw, 360f);
+        if (directionalLight == null)
+            return;
+        directionalLight.transform.rotation = Quaternion.Euler(manualSunPitch, manualSunYaw, 0f);
+    }
+
+    public void BeginManualGhost(int classIndex)
+    {
+        if (!showManualCaptureDialog || !showManualSettingsUi || showManualShotReview)
+            return;
+
+        List<Target_Base> pool = GetManualClassPool();
+        if (classIndex < 0 || classIndex >= pool.Count || pool[classIndex] == null)
+            return;
+
+        CancelManualGhost();
+        manualPlaceClassIndex = classIndex;
+        manualGhostSource = pool[classIndex];
+        manualGhostYaw = 0f;
+        manualGhost = Instantiate(manualGhostSource.gameObject);
+        manualGhost.name = manualGhostSource.HudLabel + " (미리보기)";
+        manualGhost.SetActive(true);
+        Target_Base ghostTarget = manualGhost.GetComponent<Target_Base>();
+        if (ghostTarget != null)
+        {
+            ghostTarget.enabled = false;
+            ghostTarget.isSample = true;
+        }
+
+        Collider[] colliders = manualGhost.GetComponentsInChildren<Collider>();
+        for (int i = 0; i < colliders.Length; i++)
+            colliders[i].enabled = false;
+
+        Rigidbody body = manualGhost.GetComponent<Rigidbody>();
+        if (body != null)
+        {
+            body.isKinematic = true;
+            body.useGravity = false;
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+
+        UpdateManualGhost();
+    }
+
+    public void CancelManualGhost()
+    {
+        if (manualGhost != null)
+            Destroy(manualGhost);
+        manualGhost = null;
+        manualGhostSource = null;
+        manualGhostCanPlace = false;
+    }
+
+    public bool TryGetManualViewfinder(out Vector2 min, out Vector2 max)
+    {
+        min = new Vector2(0.18f, 0.16f);
+        max = new Vector2(0.82f, 0.84f);
+        Camera view = GetViewCamera();
+        Camera capture = manualCaptureCamera;
+        if (view == null || capture == null)
+            return false;
+
+        min = new Vector2(1f, 1f);
+        max = new Vector2(0f, 0f);
+        Vector3[] corners =
+        {
+            new Vector3(0f, 0f, 2f),
+            new Vector3(1f, 0f, 2f),
+            new Vector3(0f, 1f, 2f),
+            new Vector3(1f, 1f, 2f)
+        };
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector3 world = capture.ViewportToWorldPoint(corners[i]);
+            Vector3 vp = view.WorldToViewportPoint(world);
+            if (vp.z <= 0f)
+                continue;
+            min.x = Mathf.Min(min.x, vp.x);
+            min.y = Mathf.Min(min.y, vp.y);
+            max.x = Mathf.Max(max.x, vp.x);
+            max.y = Mathf.Max(max.y, vp.y);
+        }
+
+        min.x = Mathf.Clamp01(min.x);
+        min.y = Mathf.Clamp01(min.y);
+        max.x = Mathf.Clamp01(max.x);
+        max.y = Mathf.Clamp01(max.y);
+        return max.x - min.x > 0.02f && max.y - min.y > 0.02f;
+    }
+
+    public void UndoLastManualTarget()
+    {
+        if (captureTargets.Count == 0)
+            return;
+        int last = captureTargets.Count - 1;
+        if (captureTargets[last] != null)
+            Destroy(captureTargets[last].gameObject);
+        captureTargets.RemoveAt(last);
+        if (last < captureClassIds.Count)
+            captureClassIds.RemoveAt(last);
+        if (last < captureAnimationStates.Count)
+            captureAnimationStates.RemoveAt(last);
+        manualCaptureStatus = "마지막 대상을 지웠습니다. (" + captureTargets.Count + ")";
+    }
+
+    public void CaptureManualSample()
+    {
+        if (captureTargets.Count == 0)
+        {
+            manualCaptureError = "배치된 대상이 없습니다.";
+            return;
+        }
+
+        if (!RenderManualShotToPreview())
+        {
+            manualCaptureError = "촬영에 실패했습니다.";
+            return;
+        }
+
+        FillPreviewBoxesFromCapture();
+        pendingManualSplit = string.IsNullOrEmpty(manualSplit) ? "train" : manualSplit;
+        pendingManualName = "manual_" + System.DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
+        showManualShotReview = true;
+        showManualSettingsUi = true;
+        CancelManualGhost();
+        SetCursorLocked(false);
+        manualCaptureError = "";
+        manualCaptureStatus = "미리보기에서 박스를 조절한 뒤 저장하세요.";
+    }
+
+    public void DiscardManualShot()
+    {
+        showManualShotReview = false;
+        pendingManualName = "";
+        if (showManualCaptureDialog)
+            ClearPreview();
+        if (showManualCaptureDialog)
+            manualCaptureStatus = "촬영을 삭제했습니다.";
+    }
+
+    public void CommitManualShot()
+    {
+        if (!showManualShotReview || previewTexture == null)
+        {
+            manualCaptureError = "저장할 촬영이 없습니다.";
+            return;
+        }
+
+        string datasetName = string.IsNullOrEmpty(editingDataset) ? selectedDataset : editingDataset;
+        if (!string.IsNullOrEmpty(datasetName))
+        {
+            selectedDataset = datasetName;
+            CreateDirectories(GetDatasetFolder(datasetName));
+        }
+
+        string split = string.IsNullOrEmpty(pendingManualSplit) ? "train" : pendingManualSplit;
+        string imageName = string.IsNullOrEmpty(pendingManualName)
+            ? "manual_" + System.DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture)
+            : pendingManualName;
+        WritePreviewTexture(imageName, split);
+        WritePreviewLabels(imageName, split);
+        RefreshSampleList();
+        RefreshAssets();
+        showManualShotReview = false;
+        pendingManualName = "";
+        ClearPreview();
+        manualCaptureError = "";
+        manualCaptureStatus = split + "/" + imageName + " 저장";
+    }
+
+    bool RenderManualShotToPreview()
+    {
+        Camera capture = GetLabelCamera();
+        if (capture == null || renderTexture == null)
+            return false;
+
+        EnsureScreenTexture();
+        if (screenTexture == null)
+            return false;
+
+        RenderTexture currentRT = RenderTexture.active;
+        RenderTexture previousTarget = capture.targetTexture;
+        capture.targetTexture = renderTexture;
+        RenderTexture.active = renderTexture;
+        capture.Render();
+        screenTexture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
+        screenTexture.Apply();
+        capture.targetTexture = previousTarget != null ? previousTarget : renderTexture;
+        RenderTexture.active = currentRT;
+
+        if (previewTexture != null)
+            Destroy(previewTexture);
+        previewTexture = new Texture2D(screenTexture.width, screenTexture.height, TextureFormat.RGB24, false);
+        previewTexture.SetPixels(screenTexture.GetPixels());
+        previewTexture.Apply(false);
+        return true;
+    }
+
+    void FillPreviewBoxesFromCapture()
+    {
+        previewBoxes.Clear();
+        for (int i = 0; i < captureTargets.Count; i++)
+        {
+            Rect box;
+            if (!TryGetViewBox(captureTargets[i], out box))
+                continue;
+
+            float xMin = Mathf.Clamp01(box.xMin);
+            float yMin = Mathf.Clamp01(box.yMin);
+            float xMax = Mathf.Clamp01(box.xMax);
+            float yMax = Mathf.Clamp01(box.yMax);
+            float w = xMax - xMin;
+            float h = yMax - yMin;
+            if (w <= 0.001f || h <= 0.001f)
+                continue;
+
+            YoloBox yolo = new YoloBox();
+            yolo.classId = i < captureClassIds.Count ? captureClassIds[i] : GetClassIdForTarget(captureTargets[i]);
+            yolo.cx = (xMin + xMax) * 0.5f;
+            yolo.cy = 1f - (yMin + yMax) * 0.5f;
+            yolo.w = w;
+            yolo.h = h;
+            previewBoxes.Add(yolo);
+        }
+    }
+
+    void WritePreviewTexture(string imageName, string split)
+    {
+        if (previewTexture == null)
+            return;
+
+        byte[] bytes = previewTexture.EncodeToJPG(jpegQuality);
+        string imagePath = GetDatasetRoot() + "/images/" + split + "/" + imageName + ".jpg";
+        string folder = Path.GetDirectoryName(imagePath);
+        if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
+            Directory.CreateDirectory(folder);
+        File.WriteAllBytes(imagePath, bytes);
+    }
+
+    void WritePreviewLabels(string imageName, string split)
+    {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < previewBoxes.Count; i++)
+        {
+            YoloBox box = previewBoxes[i];
+            if (builder.Length > 0)
+                builder.Append('\n');
+            builder.AppendFormat(
+                CultureInfo.InvariantCulture,
+                "{0} {1:0.######} {2:0.######} {3:0.######} {4:0.######}",
+                box.classId,
+                Mathf.Clamp01(box.cx),
+                Mathf.Clamp01(box.cy),
+                Mathf.Clamp01(box.w),
+                Mathf.Clamp01(box.h));
+        }
+
+        string labelPath = GetDatasetRoot() + "/labels/" + split + "/" + imageName + ".txt";
+        string folder = Path.GetDirectoryName(labelPath);
+        if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
+            Directory.CreateDirectory(folder);
+        File.WriteAllText(labelPath, builder.ToString());
+    }
+
+    void TickManualCapture()
+    {
+        if (!showManualCaptureDialog)
+            return;
+
+        if (WasTabPressed() && !showManualShotReview)
+            ToggleManualSettingsUi();
+
+        if (showManualShotReview)
+        {
+            SetCursorLocked(false);
+            return;
+        }
+
+        if (IsManualDragging)
+        {
+            float scroll = ReadManualScroll();
+            if (Mathf.Abs(scroll) > 0.0001f)
+                ApplyManualGhostScroll(scroll);
+            UpdateManualGhost();
+            if (WasCancelPressed())
+                CancelManualGhost();
+            else if (WasLeftReleased())
+                ConfirmManualGhost();
+            SetCursorLocked(false);
+            return;
+        }
+
+        bool blockFly = showManualSettingsUi;
+        SetCursorLocked(!blockFly);
+        if (blockFly)
+            return;
+
+        Camera view = GetViewCamera();
+        if (view == null)
+            return;
+
+        ReadManualLook(out float mouseX, out float mouseY);
+        manualFlyYaw += mouseX * 0.12f;
+        manualFlyPitch = Mathf.Clamp(manualFlyPitch - mouseY * 0.12f, -80f, 80f);
+        view.transform.rotation = Quaternion.Euler(manualFlyPitch, manualFlyYaw, 0f);
+
+        Vector3 wish = ReadManualMoveWish();
+        view.transform.position += wish * 16f * Time.deltaTime;
+        ClampManualViewPosition();
+    }
+
+    void BeginManualView(Vector3 origin)
+    {
+        Camera view = GetViewCamera();
+        if (view == null)
+            return;
+
+        if (datasetCamera != null)
+        {
+            datasetCameraWasEnabled = datasetCamera.enabled;
+            datasetCamera.enabled = false;
+        }
+
+        manualHomePos = view.transform.position;
+        manualHomeRot = view.transform.rotation;
+        view.enabled = true;
+        Vector3 offset = Quaternion.Euler(manualPitch, manualYaw, 0f) * new Vector3(0f, 0f, -manualDistance);
+        view.transform.position = origin + offset;
+        view.transform.LookAt(origin);
+        Vector3 euler = view.transform.rotation.eulerAngles;
+        manualFlyYaw = euler.y;
+        manualFlyPitch = NormalizePitch(euler.x);
+        EnsureManualCaptureCamera(view);
+        SetCursorLocked(true);
+    }
+
+    void EndManualView()
+    {
+        CancelManualGhost();
+        Camera view = GetViewCamera();
+        if (view != null)
+        {
+            view.transform.position = manualHomePos;
+            view.transform.rotation = manualHomeRot;
+        }
+
+        if (manualCaptureCamera != null)
+        {
+            Destroy(manualCaptureCamera.gameObject);
+            manualCaptureCamera = null;
+        }
+
+        if (datasetCamera != null)
+            datasetCamera.enabled = datasetCameraWasEnabled;
+    }
+
+    void EnsureManualCaptureCamera(Camera view)
+    {
+        if (view == null)
+            return;
+        if (manualCaptureCamera == null)
+        {
+            GameObject go = new GameObject("ManualCaptureCamera");
+            go.transform.SetParent(view.transform, false);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            manualCaptureCamera = go.AddComponent<Camera>();
+            AudioListener extra = go.GetComponent<AudioListener>();
+            if (extra != null)
+                Destroy(extra);
+        }
+
+        if (datasetCamera != null)
+            manualCaptureCamera.CopyFrom(datasetCamera);
+
+        manualCaptureCamera.transform.SetParent(view.transform, false);
+        manualCaptureCamera.transform.localPosition = Vector3.zero;
+        manualCaptureCamera.transform.localRotation = Quaternion.identity;
+        manualCaptureCamera.transform.localScale = Vector3.one;
+        manualCaptureCamera.enabled = false;
+        manualCaptureCamera.targetTexture = renderTexture != null ? renderTexture : datasetCamera != null ? datasetCamera.targetTexture : null;
+        manualCaptureCamera.depth = view.depth - 2f;
+        manualCaptureCamera.stereoTargetEye = StereoTargetEyeMask.None;
+        AudioListener copiedListener = manualCaptureCamera.GetComponent<AudioListener>();
+        if (copiedListener != null)
+            Destroy(copiedListener);
+
+        UnityEngine.Rendering.Universal.UniversalAdditionalCameraData srcData = datasetCamera != null
+            ? datasetCamera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>()
+            : null;
+        UnityEngine.Rendering.Universal.UniversalAdditionalCameraData dstData =
+            manualCaptureCamera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+        if (srcData != null && dstData != null)
+        {
+            dstData.renderType = UnityEngine.Rendering.Universal.CameraRenderType.Base;
+            dstData.renderPostProcessing = srcData.renderPostProcessing;
+            dstData.antialiasing = srcData.antialiasing;
+            dstData.antialiasingQuality = srcData.antialiasingQuality;
+            dstData.dithering = srcData.dithering;
+            dstData.renderShadows = srcData.renderShadows;
+        }
+        else if (dstData != null)
+        {
+            dstData.renderType = UnityEngine.Rendering.Universal.CameraRenderType.Base;
+            dstData.renderPostProcessing = false;
+        }
+    }
+
+    void UpdateManualGhost()
+    {
+        if (manualGhost == null)
+            return;
+
+        Camera view = GetViewCamera();
+        if (view == null)
+        {
+            manualGhost.SetActive(false);
+            manualGhostCanPlace = false;
+            return;
+        }
+
+        if (hud != null && hud.IsPointerOverManualUi())
+        {
+            manualGhost.SetActive(false);
+            manualGhostCanPlace = false;
+            return;
+        }
+
+        Ray ray = view.ScreenPointToRay(GetMouseScreenPosition());
+        Vector3 spawnPos;
+        if (!TryRaycastGroundAlongRay(ray, out spawnPos))
+        {
+            manualGhost.SetActive(false);
+            manualGhostCanPlace = false;
+            return;
+        }
+
+        manualGhost.SetActive(true);
+        manualGhost.transform.position = spawnPos;
+        manualGhost.transform.rotation = Quaternion.Euler(0f, manualGhostYaw, 0f);
+        manualGhostCanPlace = true;
+    }
+
+    void ConfirmManualGhost()
+    {
+        if (!manualGhostCanPlace || manualGhost == null || manualGhostSource == null)
+        {
+            CancelManualGhost();
+            return;
+        }
+
+        Vector3 pos = manualGhost.transform.position;
+        float yaw = manualGhostYaw;
+        Target_Base source = manualGhostSource;
+        CancelManualGhost();
+        SpawnManualTarget(source, pos, yaw);
+    }
+
+    bool SpawnManualTarget(Target_Base source, Vector3 spawnPos, float yaw)
+    {
+        if (source == null)
+            return false;
+
+        Target_Base clone = Instantiate(source);
+        clone.isSample = true;
+        clone.gameObject.SetActive(true);
+        if (clone.rigidbody == null)
+            clone.rigidbody = clone.GetComponent<Rigidbody>();
+        if (clone.rigidbody != null)
+        {
+            clone.rigidbody.useGravity = false;
+            clone.rigidbody.linearVelocity = Vector3.zero;
+            clone.rigidbody.angularVelocity = Vector3.zero;
+            clone.rigidbody.constraints = RigidbodyConstraints.FreezeRotation;
+        }
+
+        PrepareTargetForCapture(clone);
+        clone.transform.position = spawnPos;
+        clone.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+        captureTargets.Add(clone);
+        captureClassIds.Add(GetClassIdForTarget(source));
+        captureAnimationStates.Add(GetAnimationStatesForTarget(source));
+        manualCaptureError = "";
+        manualCaptureStatus = clone.HudLabel + " 배치 (" + captureTargets.Count + ")";
+        return true;
+    }
+
+    Camera GetViewCamera()
+    {
+        if (viewCamera == null)
+            viewCamera = Camera.main;
+        if (viewCamera == null)
+            viewCamera = datasetCamera;
+        return viewCamera;
+    }
+
+    Camera GetLabelCamera()
+    {
+        if (showManualCaptureDialog && manualCaptureCamera != null)
+            return manualCaptureCamera;
+        return datasetCamera;
+    }
+
+    void ReadManualSunFromLight()
+    {
+        if (directionalLight == null)
+            return;
+        Vector3 euler = directionalLight.transform.rotation.eulerAngles;
+        manualSunPitch = NormalizePitch(euler.x);
+        if (manualSunPitch < 12f)
+            manualSunPitch = 50f;
+        manualSunYaw = euler.y;
+    }
+
+    void RefreshManualMoveBounds()
+    {
+        manualMoveLimit = FindFirstObjectByType<CCTVMoveLimit>();
+        hasManualMoveBounds = false;
+        GameObject terrainGo = null;
+        for (int i = 0; i < terrainCatalog.Count; i++)
+        {
+            if (terrainCatalog[i] != null && terrainCatalog[i].activeInHierarchy)
+            {
+                terrainGo = terrainCatalog[i];
+                break;
+            }
+        }
+
+        if (terrainGo == null)
+            return;
+
+        Terrain terrain = terrainGo.GetComponent<Terrain>();
+        if (terrain != null && terrain.terrainData != null)
+        {
+            Vector3 pos = terrain.transform.position;
+            Vector3 size = terrain.terrainData.size;
+            Vector3 center = pos + new Vector3(size.x * 0.5f, 14f, size.z * 0.5f);
+            manualMoveBounds = new Bounds(center, new Vector3(size.x * 0.82f, 28f, size.z * 0.82f));
+            hasManualMoveBounds = true;
+            return;
+        }
+
+        Renderer[] renderers = terrainGo.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0)
+            return;
+        Bounds bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++)
+            bounds.Encapsulate(renderers[i].bounds);
+        bounds.Expand(new Vector3(-bounds.size.x * 0.1f, 0f, -bounds.size.z * 0.1f));
+        Vector3 c = bounds.center;
+        c.y = bounds.min.y + 14f;
+        manualMoveBounds = new Bounds(c, new Vector3(bounds.size.x, 28f, bounds.size.z));
+        hasManualMoveBounds = true;
+    }
+
+    void ClampManualViewPosition()
+    {
+        Camera view = GetViewCamera();
+        if (view == null)
+            return;
+
+        Vector3 pos = view.transform.position;
+        Collider volume = manualMoveLimit != null ? manualMoveLimit.Volume : null;
+        if (volume != null)
+        {
+            Vector3 closest = volume.ClosestPoint(pos);
+            if ((closest - pos).sqrMagnitude > 0.0001f)
+                pos = closest;
+        }
+        else if (hasManualMoveBounds)
+        {
+            pos.x = Mathf.Clamp(pos.x, manualMoveBounds.min.x, manualMoveBounds.max.x);
+            pos.y = Mathf.Clamp(pos.y, manualMoveBounds.min.y, manualMoveBounds.max.y);
+            pos.z = Mathf.Clamp(pos.z, manualMoveBounds.min.z, manualMoveBounds.max.z);
+        }
+
+        view.transform.position = pos;
+    }
+
+    Vector3 ReadManualMoveWish()
+    {
+        float x = 0f;
+        float z = 0f;
+        float y = 0f;
+#if ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null)
+        {
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
+                x += 1f;
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
+                x -= 1f;
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
+                z += 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
+                z -= 1f;
+            if (keyboard.spaceKey.isPressed)
+                y += 1f;
+            if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed)
+                y -= 1f;
+        }
+        else
+#endif
+        {
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+                x += 1f;
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+                x -= 1f;
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
+                z += 1f;
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
+                z -= 1f;
+            if (Input.GetKey(KeyCode.Space))
+                y += 1f;
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                y -= 1f;
+        }
+
+        Vector3 planar = Quaternion.Euler(0f, manualFlyYaw, 0f) * new Vector3(x, 0f, z);
+        planar.y = 0f;
+        Vector3 wish = planar + Vector3.up * y;
+        if (wish.sqrMagnitude > 1f)
+            wish.Normalize();
+        return wish;
+    }
+
+    void ReadManualLook(out float mouseX, out float mouseY)
+    {
+        mouseX = 0f;
+        mouseY = 0f;
+#if ENABLE_INPUT_SYSTEM
+        Mouse mouse = Mouse.current;
+        if (mouse != null)
+        {
+            Vector2 delta = mouse.delta.ReadValue();
+            mouseX = delta.x;
+            mouseY = delta.y;
+            return;
+        }
+#endif
+        mouseX = Input.GetAxisRaw("Mouse X") * 20f;
+        mouseY = Input.GetAxisRaw("Mouse Y") * 20f;
+    }
+
+    public void ApplyManualGhostScroll(float scroll)
+    {
+        if (!IsManualDragging || Time.frameCount == lastGhostScrollFrame)
+            return;
+        float notches = NormalizeScrollNotches(scroll);
+        if (Mathf.Abs(notches) < 0.01f)
+            return;
+        lastGhostScrollFrame = Time.frameCount;
+        manualGhostYaw += notches * 18f;
+        UpdateManualGhost();
+    }
+
+    float ReadManualScroll()
+    {
+        float scroll = 0f;
+#if ENABLE_INPUT_SYSTEM
+        Mouse mouse = Mouse.current;
+        if (mouse != null)
+        {
+            Vector2 value = mouse.scroll.ReadValue();
+            scroll = Mathf.Abs(value.y) >= Mathf.Abs(value.x) ? value.y : value.x;
+        }
+        else
+#endif
+        {
+            scroll = Input.mouseScrollDelta.y;
+        }
+
+        return scroll;
+    }
+
+    static float NormalizeScrollNotches(float scroll)
+    {
+        if (Mathf.Abs(scroll) >= 20f)
+            scroll /= 120f;
+        return Mathf.Clamp(scroll, -4f, 4f);
+    }
+
+    Vector3 GetMouseScreenPosition()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current != null)
+            return Mouse.current.position.ReadValue();
+#endif
+        return Input.mousePosition;
+    }
+
+    bool WasTabPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null)
+            return keyboard.tabKey.wasPressedThisFrame;
+#endif
+        return Input.GetKeyDown(KeyCode.Tab);
+    }
+
+    bool WasLeftReleased()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current != null)
+            return Mouse.current.leftButton.wasReleasedThisFrame;
+#endif
+        return Input.GetMouseButtonUp(0);
+    }
+
+    bool WasCancelPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        Mouse mouse = Mouse.current;
+        if (mouse != null && mouse.rightButton.wasPressedThisFrame)
+            return true;
+        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+            return true;
+        if (mouse != null || keyboard != null)
+            return false;
+#endif
+        return Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape);
+    }
+
+    static float NormalizePitch(float eulerX)
+    {
+        if (eulerX > 180f)
+            eulerX -= 360f;
+        return eulerX;
+    }
+
+    static void SetCursorLocked(bool locked)
+    {
+        Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
+        Cursor.visible = !locked;
+    }
+
+    void EnsureScreenTexture()
+    {
+        if (screenTexture == null && renderTexture != null)
+        {
+            screenTexture = new Texture2D(
+                renderTexture.width,
+                renderTexture.height,
+                TextureFormat.RGB24,
+                false);
+        }
+    }
+
+    GameObject FirstAvailableTerrain()
+    {
+        for (int i = 0; i < includedTerrains.Count; i++)
+        {
+            if (includedTerrains[i] != null)
+                return includedTerrains[i];
+        }
+
+        for (int i = 0; i < terrainCatalog.Count; i++)
+        {
+            if (terrainCatalog[i] != null)
+                return terrainCatalog[i];
+        }
+
+        return null;
+    }
+
+    void ActivateTerrain(GameObject chosen)
+    {
+        if (chosen == null)
+            return;
+        for (int i = 0; i < terrainCatalog.Count; i++)
+        {
+            GameObject terrain = terrainCatalog[i];
+            if (terrain == null)
+                continue;
+            bool active = terrain == chosen;
+            if (terrain.activeSelf != active)
+                terrain.SetActive(active);
+        }
+
+        CombatCollision.ApplyGroundLayers();
     }
 
     int CountSplitImages(string split)
@@ -2354,6 +3181,8 @@ public class DatasetManager : MonoBehaviour
             if (terrain.activeSelf != active)
                 terrain.SetActive(active);
         }
+
+        CombatCollision.ApplyGroundLayers();
     }
 
     Vector3 GetCaptureOrigin()
@@ -2396,8 +3225,8 @@ public class DatasetManager : MonoBehaviour
         float vertical = fov * Mathf.Deg2Rad;
         float horizontal = 2f * Mathf.Atan(Mathf.Tan(vertical * 0.5f) * aspect);
         float halfAngle = Mathf.Min(vertical, horizontal) * 0.5f;
-        float fill = Mathf.Clamp(spawnViewFill, 0.2f, 1f);
-        return Mathf.Max(0.5f, distance * Mathf.Tan(halfAngle) * fill);
+        float fill = Mathf.Clamp(spawnViewFill, 0.55f, 1f);
+        return Mathf.Max(minSpacing, distance * Mathf.Tan(halfAngle) * fill);
     }
 
     void SpawnCaptureTargets(Vector3 origin, float spawnRadius, int count)
@@ -2446,7 +3275,7 @@ public class DatasetManager : MonoBehaviour
             }
 
             PrepareTargetForCapture(clone);
-            PlaceTargetWithoutOverlap(clone, origin, spawnRadius);
+            PlaceTargetWithoutOverlap(clone, origin, spawnRadius, i, spawnCount);
 
             captureTargets.Add(clone);
             captureClassIds.Add(GetClassIdForTarget(source));
@@ -2476,22 +3305,29 @@ public class DatasetManager : MonoBehaviour
         return new[] { "Move" };
     }
 
-    void PlaceTargetWithoutOverlap(Target_Base clone, Vector3 origin, float spawnRadius)
+    void PlaceTargetWithoutOverlap(Target_Base clone, Vector3 origin, float spawnRadius, int index, int total)
     {
         clone.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
         Vector3 fallback = origin;
         TryRaycastGround(origin.x, origin.z, origin.y, out fallback);
+        Vector3 slotted = FindSlottedSpawn(origin, spawnRadius, index, total);
+        if (slotted != fallback)
+            fallback = slotted;
         clone.transform.position = fallback;
 
         int attempts = Mathf.Max(1, maxSpawnAttempts);
         for (int attempt = 0; attempt < attempts; attempt++)
         {
-            Vector3 candidate = FindSpawnPosition(origin, spawnRadius);
+            Vector3 candidate = attempt == 0
+                ? fallback
+                : FindSpawnPosition(origin, spawnRadius);
             clone.transform.position = candidate;
             clone.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
             Physics.SyncTransforms();
-            if (!HasViewBoxOverlap(clone))
+            if (clone.animator != null)
+                clone.animator.Update(0f);
+            if (!HasViewBoxOverlap(clone) && !HasWorldOverlap(clone))
                 return;
 
             fallback = candidate;
@@ -2501,12 +3337,36 @@ public class DatasetManager : MonoBehaviour
         Physics.SyncTransforms();
     }
 
+    bool HasWorldOverlap(Target_Base target)
+    {
+        if (target == null)
+            return false;
+
+        Vector3 pos = target.transform.position;
+        float size = MeasureTargetSize(target);
+        for (int i = 0; i < captureTargets.Count; i++)
+        {
+            Target_Base other = captureTargets[i];
+            if (other == null || other == target)
+                continue;
+
+            Vector3 delta = other.transform.position - pos;
+            delta.y = 0f;
+            float need = Mathf.Max(minSpacing, 0.7f * (size + MeasureTargetSize(other)));
+            if (delta.magnitude < need)
+                return true;
+        }
+
+        return false;
+    }
+
     bool HasViewBoxOverlap(Target_Base target)
     {
         Rect box;
         if (!TryGetViewBox(target, out box))
             return false;
 
+        box = InflateViewBox(box, 0.03f);
         for (int i = 0; i < captureTargets.Count; i++)
         {
             Target_Base other = captureTargets[i];
@@ -2517,17 +3377,27 @@ public class DatasetManager : MonoBehaviour
             if (!TryGetViewBox(other, out otherBox))
                 continue;
 
-            if (box.Overlaps(otherBox, true))
+            if (box.Overlaps(InflateViewBox(otherBox, 0.03f), true))
                 return true;
         }
 
         return false;
     }
 
+    static Rect InflateViewBox(Rect box, float margin)
+    {
+        box.xMin -= margin;
+        box.yMin -= margin;
+        box.xMax += margin;
+        box.yMax += margin;
+        return box;
+    }
+
     bool TryGetViewBox(Target_Base target, out Rect box)
     {
         box = default;
-        if (target == null || datasetCamera == null)
+        Camera capture = GetLabelCamera();
+        if (target == null || capture == null)
             return false;
 
         Bounds bounds;
@@ -2552,7 +3422,7 @@ public class DatasetManager : MonoBehaviour
 
         for (int i = 0; i < corners.Length; i++)
         {
-            Vector3 viewPoint = datasetCamera.WorldToViewportPoint(corners[i]);
+            Vector3 viewPoint = capture.WorldToViewportPoint(corners[i]);
             if (viewPoint.z <= 0f)
                 continue;
 
@@ -2670,10 +3540,10 @@ public class DatasetManager : MonoBehaviour
         if (push.sqrMagnitude < 0.0001f)
             push = Random.insideUnitCircle.normalized;
 
-        float step = 0.08f + 0.04f * attempt;
+        float step = 0.14f + 0.07f * attempt;
         Vector2 newCenter = center + push.normalized * step;
-        newCenter.x = Mathf.Clamp(newCenter.x, 0.12f, 0.88f);
-        newCenter.y = Mathf.Clamp(newCenter.y, 0.12f, 0.88f);
+        newCenter.x = Mathf.Clamp(newCenter.x, 0.08f, 0.92f);
+        newCenter.y = Mathf.Clamp(newCenter.y, 0.08f, 0.92f);
 
         Ray ray = datasetCamera.ViewportPointToRay(new Vector3(newCenter.x, newCenter.y, 0f));
         Vector3 groundPos;
@@ -2693,7 +3563,7 @@ public class DatasetManager : MonoBehaviour
         right.Normalize();
         forward.Normalize();
 
-        float worldStep = Mathf.Max(minSpacing, lastSpawnRadius * step);
+        float worldStep = Mathf.Max(minSpacing, lastSpawnRadius * Mathf.Max(0.12f, step));
         Vector3 candidate = target.transform.position + (right * push.x + forward * push.y).normalized * worldStep;
         if (TryRaycastGround(candidate.x, candidate.z, lastCaptureOrigin.y, out groundPos))
         {
@@ -2706,7 +3576,7 @@ public class DatasetManager : MonoBehaviour
     {
         Vector3 offset = pos - lastCaptureOrigin;
         offset.y = 0f;
-        float limit = Mathf.Max(minSpacing, lastSpawnRadius);
+        float limit = Mathf.Max(minSpacing * 2f, lastSpawnRadius * 1.25f);
         if (offset.magnitude <= limit)
             return;
 
@@ -2730,6 +3600,23 @@ public class DatasetManager : MonoBehaviour
         return false;
     }
 
+    Vector3 FindSlottedSpawn(Vector3 origin, float spawnRadius, int index, int total)
+    {
+        Vector3 fallback = origin;
+        TryRaycastGround(origin.x, origin.z, origin.y, out fallback);
+        if (total < 1)
+            total = 1;
+
+        float ring = spawnRadius * (0.4f + 0.55f * ((index % 2 == 0) ? 0.55f : 1f));
+        float angle = (index / (float)total) * Mathf.PI * 2f + Random.Range(-0.2f, 0.2f);
+        float x = origin.x + Mathf.Cos(angle) * ring;
+        float z = origin.z + Mathf.Sin(angle) * ring;
+        Vector3 grounded;
+        if (TryRaycastGround(x, z, origin.y, out grounded) && IsFarEnough(grounded, null))
+            return grounded;
+        return fallback;
+    }
+
     Vector3 FindSpawnPosition(Vector3 origin, float spawnRadius)
     {
         Vector3 fallback = origin;
@@ -2738,34 +3625,37 @@ public class DatasetManager : MonoBehaviour
         int attempts = Mathf.Max(1, maxSpawnAttempts);
         for (int attempt = 0; attempt < attempts; attempt++)
         {
-            Vector2 offset = Random.insideUnitCircle * spawnRadius;
-            float x = origin.x + offset.x;
-            float z = origin.z + offset.y;
+            float radius = spawnRadius * Mathf.Sqrt(Random.value);
+            float angle = Random.Range(0f, Mathf.PI * 2f);
+            float x = origin.x + Mathf.Cos(angle) * radius;
+            float z = origin.z + Mathf.Sin(angle) * radius;
             Vector3 candidate;
             if (!TryRaycastGround(x, z, origin.y, out candidate))
                 continue;
 
-            bool farEnough = true;
-            for (int i = 0; i < captureTargets.Count; i++)
-            {
-                Target_Base existing = captureTargets[i];
-                if (existing == null)
-                    continue;
-
-                Vector3 delta = existing.transform.position - candidate;
-                delta.y = 0f;
-                if (delta.magnitude < minSpacing)
-                {
-                    farEnough = false;
-                    break;
-                }
-            }
-
-            if (farEnough)
+            if (IsFarEnough(candidate, null))
                 return candidate;
         }
 
         return fallback;
+    }
+
+    bool IsFarEnough(Vector3 candidate, Target_Base ignore)
+    {
+        for (int i = 0; i < captureTargets.Count; i++)
+        {
+            Target_Base existing = captureTargets[i];
+            if (existing == null || existing == ignore)
+                continue;
+
+            Vector3 delta = existing.transform.position - candidate;
+            delta.y = 0f;
+            float need = Mathf.Max(minSpacing, 0.7f * (MeasureTargetSize(existing) + 1.5f));
+            if (delta.magnitude < need)
+                return false;
+        }
+
+        return true;
     }
 
     bool TryRaycastGround(float x, float z, float originY, out Vector3 spawnPos)
@@ -2791,12 +3681,7 @@ public class DatasetManager : MonoBehaviour
 
     int GetGroundMask()
     {
-        if (groundMask.value != 0)
-            return groundMask.value;
-
-        int mask = Physics.DefaultRaycastLayers;
-        mask &= ~LayerMask.GetMask("Enemy", "Friendly", "Turret", "Bullet", "Ignore Raycast");
-        return mask;
+        return CombatCollision.GroundMaskOrOverride(groundMask);
     }
 
     void PlaceCamera(Vector3 lookPoint, float distance, float fov, float pitch, float yaw)
@@ -2871,15 +3756,29 @@ public class DatasetManager : MonoBehaviour
         captureAnimationStates.Clear();
     }
 
-    void CaptureAndSave(int index, string split)
+    void CaptureAndSave(int index, string split, int captureRun)
     {
-        if (captureTargets.Count == 0)
+        CaptureAndSaveNamed(
+            "sample_" + captureRun.ToString(CultureInfo.InvariantCulture) + "_" + index.ToString(CultureInfo.InvariantCulture),
+            split);
+    }
+
+    void CaptureAndSaveNamed(string imageName, string split)
+    {
+        Camera capture = GetLabelCamera();
+        if (captureTargets.Count == 0 || capture == null || renderTexture == null)
+            return;
+
+        EnsureScreenTexture();
+        if (screenTexture == null)
             return;
 
         RenderTexture currentRT = RenderTexture.active;
+        RenderTexture previousTarget = capture.targetTexture;
+        capture.targetTexture = renderTexture;
         RenderTexture.active = renderTexture;
 
-        datasetCamera.Render();
+        capture.Render();
 
         screenTexture.ReadPixels(
             new Rect(0, 0, renderTexture.width, renderTexture.height),
@@ -2888,11 +3787,10 @@ public class DatasetManager : MonoBehaviour
         );
         screenTexture.Apply();
 
+        capture.targetTexture = previousTarget;
         RenderTexture.active = currentRT;
 
         byte[] bytes = screenTexture.EncodeToJPG(jpegQuality);
-
-        string imageName = "sample_" + index;
         string imagePath =
             GetDatasetRoot() +
             "/images/" +
@@ -2900,6 +3798,10 @@ public class DatasetManager : MonoBehaviour
             "/" +
             imageName +
             ".jpg";
+
+        string folder = Path.GetDirectoryName(imagePath);
+        if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
+            Directory.CreateDirectory(folder);
 
         File.WriteAllBytes(imagePath, bytes);
         SaveLabels(imageName, split);

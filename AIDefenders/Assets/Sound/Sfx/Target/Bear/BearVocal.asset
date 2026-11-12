@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a1c9e4f2b5846d0a3e8c1f0b9d24680, type: 3}
   m_Name: BearVocal
   m_EditorClassIdentifier: Assembly-CSharp::SfxEvent
-  clips: []
+  clips:
+  - {fileID: 8300000, guid: e8933ff8323db4948a1562baf8a6ab4c, type: 3}
   volume: 0.8
   pitch: {x: 0.9, y: 1.05}

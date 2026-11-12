@@ -67,6 +67,51 @@ public class GameSfx : MonoBehaviour
         SpawnWorldSource(clip, position, volume, pitchScale, minDistance, maxDistance);
     }
 
+    public static AudioSource PlayAttachedLoop(SfxEvent sfx, Transform host)
+    {
+        if (host == null || sfx == null || !sfx.TryPick(out AudioClip clip, out float volumeScale, out float pitchScale))
+            return null;
+
+        float volume = volumeScale;
+        float minDistance = 6f;
+        float maxDistance = 48f;
+        if (Instance != null)
+        {
+            volume *= Instance.worldVolume;
+            minDistance = Instance.worldMinDistance;
+            maxDistance = Instance.worldMaxDistance;
+        }
+
+        GameObject go = new GameObject("LoopSfx");
+        go.transform.SetParent(host, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.identity;
+
+        AudioSource source = go.AddComponent<AudioSource>();
+        source.playOnAwake = false;
+        source.loop = true;
+        source.spatialBlend = 1f;
+        source.dopplerLevel = 0f;
+        source.priority = 96;
+        source.rolloffMode = AudioRolloffMode.Linear;
+        source.minDistance = minDistance;
+        source.maxDistance = Mathf.Max(minDistance + 0.1f, maxDistance);
+        source.clip = clip;
+        source.volume = volume;
+        source.pitch = pitchScale;
+        source.Play();
+        return source;
+    }
+
+    public static void StopAttached(AudioSource source)
+    {
+        if (source == null)
+            return;
+
+        source.Stop();
+        Object.Destroy(source.gameObject);
+    }
+
     static void Play(SfxEvent sfx)
     {
         if (Instance != null)

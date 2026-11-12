@@ -4,11 +4,11 @@ using UnityEngine.UI;
 
 public class HudModelSelectUi
 {
-    readonly Color panelColor = new Color(0.12f, 0.14f, 0.18f, 0.97f);
-    readonly Color rowColor = new Color(0.22f, 0.24f, 0.28f, 1f);
-    readonly Color selectedColor = new Color(0.32f, 0.52f, 0.78f, 1f);
+    readonly Color panelColor = UiSkin.Panel;
+    readonly Color rowColor = UiSkin.Blue;
+    readonly Color selectedColor = UiSkin.Sky;
     readonly Color textColor = Color.white;
-    readonly Color mutedColor = new Color(0.78f, 0.8f, 0.84f, 1f);
+    readonly Color mutedColor = UiSkin.Muted;
     readonly Color errorColor = new Color(1f, 0.45f, 0.4f, 1f);
 
     readonly GameManager gameManager;
@@ -256,7 +256,7 @@ public class HudModelSelectUi
 
     static Button CreateBottomButton(RectTransform parent, string name, string label, float minX, float maxX, float left, float right)
     {
-        Image image = UiFont.AddImage(parent, name, Color.white);
+        Image image = UiFont.AddImage(parent, name, UiSkin.Blue);
         RectTransform rt = image.rectTransform;
         rt.anchorMin = new Vector2(minX, 0f);
         rt.anchorMax = new Vector2(maxX, 0f);
@@ -267,7 +267,7 @@ public class HudModelSelectUi
         rt.offsetMax = new Vector2(right, 44f);
         Button button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
-        Text text = UiFont.AddText(rt, "Label", label, 18, TextAnchor.MiddleCenter, new Color(0.12f, 0.13f, 0.15f, 1f), UiType.BodyMedium);
+        Text text = UiFont.AddText(rt, "Label", label, 18, TextAnchor.MiddleCenter, Color.white, UiType.BodyMedium);
         text.raycastTarget = false;
         UiFont.Stretch(text.rectTransform);
         return button;

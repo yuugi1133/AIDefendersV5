@@ -35,7 +35,7 @@ public abstract class StatusEffect
     internal void RefreshFrom(StatusEffect source)
     {
         if (source != null && refreshDuration)
-            remaining = Mathf.Max(remaining, source.duration);
+            remaining = source.duration;
         OnRefreshed(source);
     }
 

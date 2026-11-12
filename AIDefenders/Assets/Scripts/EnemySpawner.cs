@@ -241,12 +241,7 @@ public class EnemySpawner : MonoBehaviour
 
     int GetGroundMask()
     {
-        if (groundMask.value != 0)
-            return groundMask.value;
-
-        int mask = Physics.DefaultRaycastLayers;
-        mask &= ~LayerMask.GetMask("Enemy", "Friendly", "Turret", "Bullet", "Ignore Raycast");
-        return mask;
+        return CombatCollision.GroundMaskOrOverride(groundMask);
     }
 
     void OnDrawGizmosSelected()

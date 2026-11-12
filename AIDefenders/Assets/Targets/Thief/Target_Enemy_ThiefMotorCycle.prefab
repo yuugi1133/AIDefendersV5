@@ -226,10 +226,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 87afcbd3a9a618a42ad6940fed264424, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_ThiefMotorCycle
-  maxHP: 30
+  maxHP: 260
   currentHP: 0
   moveSpeed: 17
-  armorValue: 0
+  armorValue: 0.3
   isSample: 0
   displayName: "\uB3C4\uB451 \uC624\uD1A0\uBC14\uC774"
   scoreCoefficient: 10
@@ -259,7 +259,8 @@ MonoBehaviour:
   rigidbody: {fileID: 8294729006624230544}
   footstep: {fileID: 0}
   vocal: {fileID: 0}
-  death: {fileID: 0}
+  death: {fileID: 11400000, guid: cd7cef12ac6eb83438fd22ee213380eb, type: 2}
+  engineLoop: {fileID: 11400000, guid: 3c8e1f7a4d2b49c09e6a1f5c8d2b7e01, type: 2}
   footstepInterval: 0.38
   vocalInterval: {x: 4, y: 11}
   killFunds: 10

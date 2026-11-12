@@ -20,6 +20,32 @@ public static class UiFont
     static readonly Dictionary<UiType, TMP_FontAsset> tmpFonts = new Dictionary<UiType, TMP_FontAsset>();
     static Sprite uiSprite;
 
+    public static Canvas FindSceneCanvas(Component owner)
+    {
+        if (owner == null)
+            return null;
+
+        var scene = owner.gameObject.scene;
+        Canvas parent = owner.GetComponentInParent<Canvas>();
+        if (parent != null && parent.gameObject.scene == scene)
+            return parent;
+
+        Canvas fallback = null;
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            foreach (Canvas canvas in root.GetComponentsInChildren<Canvas>(true))
+            {
+                if (!canvas.isRootCanvas)
+                    continue;
+                if (canvas.isActiveAndEnabled)
+                    return canvas;
+                if (fallback == null)
+                    fallback = canvas;
+            }
+        }
+        return fallback;
+    }
+
     public static Font Get(UiType type)
     {
         Font font;
@@ -106,6 +132,12 @@ public static class UiFont
         text.verticalOverflow = VerticalWrapMode.Overflow;
         text.raycastTarget = false;
         Apply(text, type);
+        if (type == UiType.Title || type == UiType.BodyBold || type == UiType.TitleMedium)
+        {
+            var outline = go.AddComponent<Outline>();
+            outline.effectColor = new Color(0.015f, 0.055f, 0.12f, .9f);
+            outline.effectDistance = new Vector2(1.2f, -1.2f);
+        }
         return text;
     }
 
@@ -118,6 +150,7 @@ public static class UiFont
         image.sprite = Sprite;
         image.type = Image.Type.Sliced;
         image.color = color;
+        if (color.a >= .9f) UiSkin.Surface(image);
         return image;
     }
 
@@ -136,9 +169,7 @@ public static class UiFont
             if (uiSprite != null)
                 return uiSprite;
 
-            uiSprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
-            if (uiSprite == null)
-                uiSprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Background.psd");
+            uiSprite = UiSkin.Rounded;
             return uiSprite;
         }
     }

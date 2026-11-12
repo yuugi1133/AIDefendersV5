@@ -13,18 +13,23 @@ MonoBehaviour:
   m_Name: AmmoData_MachineGun
   m_EditorClassIdentifier: Assembly-CSharp::AmmoData
   fireMode: 0
-  damage: 5
-  bulletSpeed: 70
+  damage: 90
+  bulletSpeed: 90
   gravity: 0
   lifetime: 2.5
   bulletPrefab: {fileID: 3223724401015827084, guid: f8f58a808953ea449baefbc91f9b1958, type: 3}
   homingTurnRate: 0
+  flightLoopSfx: {fileID: 0}
   explosionRadius: 0
   explosionDamage: 0
+  splashHitsPrimary: 0
+  explosionSfx: {fileID: 0}
   hitscanRange: 50
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  heatPerSecond: 20
+  coolPerSecond: 16
   muzzleEffect: {fileID: 100006, guid: c9eb9af70afad734091dff429aff1cb1, type: 3}
   trailEffect: {fileID: 0}
   impactEffect: {fileID: 100000, guid: 7d9314b53c08d5c4d93c6a450caf5bf6, type: 3}

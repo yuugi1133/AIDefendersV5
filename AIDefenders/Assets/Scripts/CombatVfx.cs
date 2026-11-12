@@ -48,6 +48,52 @@ public static class CombatVfx
         return instance;
     }
 
+    public static GameObject PlayLoop(GameObject prefab, Vector3 position, Transform parent)
+    {
+        if (prefab == null)
+            return null;
+
+        GameObject holder = new GameObject("LoopFx");
+        holder.transform.SetParent(parent, false);
+        holder.transform.position = position;
+        holder.SetActive(false);
+
+        GameObject instance = Object.Instantiate(prefab, holder.transform);
+        instance.transform.localPosition = Vector3.zero;
+        instance.transform.localRotation = Quaternion.identity;
+        StripDemoBehaviours(instance);
+        MuteAudio(instance);
+
+        ParticleSystem[] systems = instance.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < systems.Length; i++)
+        {
+            ParticleSystem ps = systems[i];
+            ParticleSystem.MainModule main = ps.main;
+            main.loop = true;
+            main.playOnAwake = false;
+            main.stopAction = ParticleSystemStopAction.None;
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+
+        holder.SetActive(true);
+        for (int i = 0; i < systems.Length; i++)
+            systems[i].Play(true);
+
+        return holder;
+    }
+
+    public static void StopLoop(GameObject instance)
+    {
+        if (instance == null)
+            return;
+
+        ParticleSystem[] systems = instance.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < systems.Length; i++)
+            systems[i].Stop(true, ParticleSystemStopBehavior.StopEmitting);
+
+        Object.Destroy(instance, 0.8f);
+    }
+
     public static void AttachTrail(GameObject prefab, Transform host)
     {
         if (prefab == null || host == null)
@@ -84,6 +130,20 @@ public static class CombatVfx
             if (audios[i] == null)
                 continue;
             audios[i].loop = false;
+        }
+    }
+
+    static void MuteAudio(GameObject root)
+    {
+        AudioSource[] audios = root.GetComponentsInChildren<AudioSource>(true);
+        for (int i = 0; i < audios.Length; i++)
+        {
+            AudioSource audio = audios[i];
+            if (audio == null)
+                continue;
+            audio.playOnAwake = false;
+            audio.Stop();
+            audio.enabled = false;
         }
     }
 

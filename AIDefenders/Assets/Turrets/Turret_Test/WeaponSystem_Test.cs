@@ -22,10 +22,34 @@ public class WeaponSystem : MonoBehaviour
     LineRenderer beamGlow;
     LineRenderer beamCore;
     float lastBeamTime;
+    float currentHeat;
+    bool overheated;
+    bool beamFiring;
+    float ventTimer;
+
+    public bool UsesHeat
+    {
+        get { return ammo != null && ammo.fireMode == WeaponFireMode.Beam; }
+    }
+
+    public bool IsBursting
+    {
+        get
+        {
+            if (lastFireTime <= 0f)
+                return false;
+            return Time.time - lastFireTime <= Mathf.Max(0.16f, fireDelay * 2f);
+        }
+    }
+
+    public bool IsOverheated
+    {
+        get { return overheated; }
+    }
 
     public int CurrentAmmo
     {
-        get { return currentAmmo; }
+        get { return UsesHeat ? Mathf.RoundToInt(currentHeat) : currentAmmo; }
     }
 
     public int MagazineSize
@@ -35,13 +59,15 @@ public class WeaponSystem : MonoBehaviour
 
     public bool IsReloading
     {
-        get { return isReloading; }
+        get { return isReloading || overheated; }
     }
 
     public string AmmoLabel
     {
         get
         {
+            if (UsesHeat)
+                return "과열";
             if (ammo == null)
                 return "없음";
             return string.IsNullOrWhiteSpace(ammo.name) ? "탄환" : ammo.name;
@@ -59,32 +85,59 @@ public class WeaponSystem : MonoBehaviour
     void Start()
     {
         currentAmmo = maxAmmo;
+        currentHeat = 0f;
+        overheated = false;
     }
 
     public void ApplyTierStats(float delay, int magazine, float reload, float scale)
     {
         CaptureBaseSpread();
-        fireDelay = Mathf.Max(0.01f, delay);
+        fireDelay = Mathf.Max(0.01f, delay / (1f + TurretResearch.FireRateBonus(turret)));
         maxAmmo = Mathf.Max(1, magazine);
-        reloadTime = Mathf.Max(0.01f, reload + TurretResearch.ReloadBonus(turret));
+        reloadTime = Mathf.Max(0.01f, (reload + TurretResearch.ReloadBonus(turret)) * TurretResearch.ReloadTimeScale(turret));
         spreadAngle = Mathf.Max(0f, baseSpread + TurretResearch.SpreadBonus(turret));
         damageScale = Mathf.Max(0.01f, scale);
+        if (UsesHeat)
+        {
+            if (currentHeat > maxAmmo)
+                currentHeat = maxAmmo;
+            return;
+        }
+
         if (currentAmmo > maxAmmo)
             currentAmmo = maxAmmo;
         if (!isReloading && currentAmmo <= 0)
             currentAmmo = maxAmmo;
     }
 
+    public float HeatRatio
+    {
+        get
+        {
+            if (maxAmmo <= 0)
+                return 0f;
+            return Mathf.Clamp01(currentHeat / maxAmmo);
+        }
+    }
+
     float GetShotDamage()
     {
         if (ammo == null)
             return 0f;
-        return ammo.damage * damageScale;
+        return ammo.damage * damageScale * HeatFeedbackScale();
     }
 
     float GetArmorPierce()
     {
-        return turret != null ? turret.armorPierce : 3f;
+        float pierce = turret != null ? turret.armorPierce : 3f;
+        return pierce * HeatFeedbackScale();
+    }
+
+    float HeatFeedbackScale()
+    {
+        if (!UsesHeat)
+            return 1f;
+        return 1f + TurretResearch.HeatFeedbackBonus(turret) * HeatRatio;
     }
 
     public bool UsesProjectileLead
@@ -125,17 +178,17 @@ public class WeaponSystem : MonoBehaviour
     public bool CanFire()
     {
         if (ammo == null) return false;
-        if (isReloading) return false;
+        if (isReloading || overheated) return false;
         if (Time.time - lastFireTime < fireDelay) return false;
-        if (ammo.fireMode != WeaponFireMode.Beam && currentAmmo <= 0) return false;
+        if (!UsesHeat && currentAmmo <= 0) return false;
 
         return true;
     }
 
-    public void Fire(Vector3 origin, Vector3 direction, Transform target = null)
+    public bool Fire(Vector3 origin, Vector3 direction, Transform target = null)
     {
         if (ammo == null)
-            return;
+            return false;
 
         Vector3 dir = direction.sqrMagnitude > 0.0001f
             ? direction.normalized
@@ -144,19 +197,25 @@ public class WeaponSystem : MonoBehaviour
 
         if (ammo.fireMode == WeaponFireMode.Beam)
         {
+            if (overheated)
+            {
+                StopBeam();
+                return false;
+            }
+
             FireBeam(origin, dir);
-            return;
+            return true;
         }
 
         if (!CanFire())
-            return;
+            return false;
 
         CombatVfx.PlayMuzzle(ammo.muzzleEffect, origin, dir);
 
         switch (ammo.fireMode)
         {
             case WeaponFireMode.Projectile:
-                FireProjectile(origin, dir, null);
+                FireProjectile(origin, dir, target);
                 break;
             case WeaponFireMode.Homing:
                 FireProjectile(origin, dir, target);
@@ -169,19 +228,24 @@ public class WeaponSystem : MonoBehaviour
         lastFireTime = Time.time;
         PlayFireSfx();
         ConsumeAmmo();
+        return true;
     }
 
     void LateUpdate()
     {
+        if (UsesHeat)
+            TickHeat(Time.deltaTime);
+
         if (beamRoot == null)
             return;
 
         if (Time.time - lastBeamTime > 0.08f)
-            SetBeamVisible(false);
+            StopBeam();
     }
 
     void OnDestroy()
     {
+        StopBeam();
         if (beamRoot != null)
             Destroy(beamRoot);
     }
@@ -221,18 +285,24 @@ public class WeaponSystem : MonoBehaviour
         }
 
         Vector3 velocity = direction * GetMuzzleSpeed();
-        bool homing = ammo.fireMode == WeaponFireMode.Homing;
+        float turn = ammo.homingTurnRate + TurretResearch.HomingTurnBonus(turret);
+        bool loft = TurretResearch.HasTopAttack(turret);
+        bool homing = ammo.fireMode == WeaponFireMode.Homing || turn > 0.01f || loft;
+        float life = ammo.lifetime;
+        if (loft)
+            life *= 1.4f;
 
         bullet.Init(
             velocity,
             ammo.gravity,
             GetShotDamage(),
-            ammo.lifetime,
+            life,
             homing ? homingTarget : null,
-            homing ? ammo.homingTurnRate : 0f,
+            homing ? turn : 0f,
             ammo,
             GetArmorPierce(),
-            turret
+            turret,
+            loft
         );
 
         CombatVfx.AttachTrail(ammo.trailEffect, bulletObj.transform);
@@ -275,19 +345,113 @@ public class WeaponSystem : MonoBehaviour
             {
                 Target_Base target = hit.collider.GetComponentInParent<Target_Base>();
                 if (target != null)
+                {
                     target.TakeDamage(GetShotDamage(), GetArmorPierce(), TurretResearch.WeakspotBonus(turret, target), turret);
+                    TryApplyBurn(target);
+                }
 
                 ammo.ApplyExplosion(hit.point, null, GetArmorPierce());
                 CombatVfx.PlayBeamImpact(ammo.impactEffect, hit.point, impactNormal);
                 lastFireTime = Time.time;
-                PlayFireSfx();
             }
         }
 
         ShowBeam(origin, end);
         lastBeamTime = Time.time;
+        beamFiring = true;
+        if (turret != null)
+            turret.StartFireLoop();
         if (!hitSomething)
             Debug.DrawRay(origin, direction * range, Color.red, 0.05f);
+    }
+
+    void TickHeat(float deltaTime)
+    {
+        bool beaming = beamFiring && Time.time - lastBeamTime <= 0.12f && !overheated;
+        if (!beaming)
+            StopBeam();
+
+        if (beaming)
+        {
+            currentHeat += HeatPerSecond * deltaTime;
+            if (currentHeat >= maxAmmo)
+            {
+                currentHeat = maxAmmo;
+                overheated = true;
+                StopBeam();
+                if (turret != null)
+                    turret.PlayReloadSfx();
+            }
+            return;
+        }
+
+        if (overheated)
+        {
+            ventTimer += deltaTime;
+            while (ventTimer >= 0.5f)
+            {
+                ventTimer -= 0.5f;
+                if (TurretResearch.HasEmergencyVent(turret) && Random.value < 0.05f)
+                {
+                    currentHeat = 0f;
+                    overheated = false;
+                    ventTimer = 0f;
+                    return;
+                }
+            }
+        }
+        else
+        {
+            ventTimer = 0f;
+        }
+
+        currentHeat -= CoolPerSecond * deltaTime;
+        if (currentHeat > 0f)
+            return;
+
+        currentHeat = 0f;
+        overheated = false;
+        ventTimer = 0f;
+    }
+
+    float HeatPerSecond
+    {
+        get
+        {
+            if (ammo != null && ammo.heatPerSecond > 0.01f)
+                return ammo.heatPerSecond;
+            return 20f;
+        }
+    }
+
+    float CoolPerSecond
+    {
+        get
+        {
+            float rate;
+            if (reloadTime > 0.01f && maxAmmo > 0)
+                rate = maxAmmo / reloadTime;
+            else if (ammo != null && ammo.coolPerSecond > 0.01f)
+                rate = ammo.coolPerSecond;
+            else
+                rate = 16f;
+
+            if (overheated)
+                rate *= 1f + TurretResearch.OverheatCoolBonus(turret);
+            return rate;
+        }
+    }
+
+    void TryApplyBurn(Target_Base target)
+    {
+        if (target == null || target.isDead)
+            return;
+
+        float chance = TurretResearch.BurnChance(turret);
+        if (chance <= 0f || Random.value > chance)
+            return;
+
+        target.ApplyStatus(new StatusEffect_Burn(3f, 50f, turret));
     }
 
     void ShowBeam(Vector3 start, Vector3 end)
@@ -358,6 +522,14 @@ public class WeaponSystem : MonoBehaviour
     {
         if (beamRoot != null)
             beamRoot.SetActive(visible);
+    }
+
+    void StopBeam()
+    {
+        beamFiring = false;
+        SetBeamVisible(false);
+        if (turret != null)
+            turret.StopFireLoop();
     }
 
     void PlayFireSfx()

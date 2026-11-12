@@ -3,6 +3,11 @@ using UnityEngine;
 
 public class CCTVSkill_TrapMissile : CCTVActiveSkill
 {
+    protected override string DefaultIconResource
+    {
+        get { return "UI/SkillIcons/BearTrapMissile"; }
+    }
+
     public GameObject rocketPrefab;
     public int rocketCount = 8;
     public float rocketSpeed = 32f;

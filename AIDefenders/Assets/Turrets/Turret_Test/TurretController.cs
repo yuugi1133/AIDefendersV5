@@ -19,6 +19,16 @@ public class TurretController : MonoBehaviour
     public GameObject sourcePrefab;
     public TurretUpgradeTier[] upgradeTiers;
 
+    Transform[] activeMuzzles = new Transform[0];
+    Transform[] spinBarrels = new Transform[0];
+    Vector3[] barrelSpinAxes = new Vector3[0];
+    int muzzleIndex;
+    float barrelSpinSpeed = 720f;
+    float barrelSpinVel;
+
+    [Header("Vfx")]
+    public GameObject workLoopFx;
+
     [Header("Sfx")]
     public SfxEvent constructStart;
     public SfxEvent constructComplete;
@@ -34,6 +44,7 @@ public class TurretController : MonoBehaviour
     Vector3 currentAimPoint;
     float lastCommandTime = -999f;
     CCTVController assignedCctv;
+    AudioSource fireLoop;
     bool constructing;
     bool upgrading;
     bool ready = true;
@@ -45,6 +56,23 @@ public class TurretController : MonoBehaviour
     float upgradeDuration;
     Vector3 builtLocalPosition;
     Vector3 buriedLocalPosition;
+    Vector3[] visualRestLocal;
+    GameObject upgradeOutgoing;
+    GameObject upgradeIncoming;
+    Vector3 upgradeOutRest;
+    Vector3 upgradeOutBuried;
+    Vector3 upgradeInRest;
+    Vector3 upgradeInBuried;
+    [System.NonSerialized] GameObject workFxInstance;
+    [System.NonSerialized] bool playedUpgradeStartSfx;
+    [System.NonSerialized] bool upgradeSfxOnly;
+
+    enum CompleteSfx
+    {
+        None,
+        Construct,
+        Upgrade
+    }
 
     public CCTVController AssignedCctv
     {
@@ -92,23 +120,57 @@ public class TurretController : MonoBehaviour
 
         desiredLevel = Mathf.Clamp(upgradeLevel, 1, MaxLevel);
         upgradeLevel = desiredLevel;
+        builtLocalPosition = transform.localPosition;
+        CacheVisualRests();
         ApplyCurrentTier();
     }
 
     public Vector3 GetInspectAnchor()
     {
-        Renderer[] renderers = GetComponentsInChildren<Renderer>();
-        if (renderers == null || renderers.Length == 0)
+        Bounds bounds;
+        if (!TryGetVisualBounds(false, out bounds))
             return transform.position + Vector3.up * 1.6f;
 
-        Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
+        return bounds.center + Vector3.up * (bounds.extents.y + 0.35f);
+    }
+
+    bool TryGetVisualBounds(bool includeInactive, out Bounds bounds)
+    {
+        bounds = default;
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(includeInactive);
+        bool found = false;
+        for (int i = 0; i < renderers.Length; i++)
         {
-            if (renderers[i] != null)
-                bounds.Encapsulate(renderers[i].bounds);
+            Renderer renderer = renderers[i];
+            if (!IsInspectRenderer(renderer))
+                continue;
+
+            if (!found)
+            {
+                bounds = renderer.bounds;
+                found = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
         }
 
-        return bounds.center + Vector3.up * (bounds.extents.y + 0.35f);
+        return found;
+    }
+
+    static bool IsInspectRenderer(Renderer renderer)
+    {
+        if (renderer == null || !renderer.enabled)
+            return false;
+        if (renderer is LineRenderer || renderer is ParticleSystemRenderer)
+            return false;
+        if (renderer.transform != null && renderer.transform.name == "TurretBeam")
+            return false;
+        Transform parent = renderer.transform.parent;
+        if (parent != null && parent.name == "TurretBeam")
+            return false;
+        return true;
     }
 
     public int GetSellValue()
@@ -193,11 +255,13 @@ public class TurretController : MonoBehaviour
 
         constructing = true;
         upgrading = false;
+        upgradeSfxOnly = false;
         ready = false;
         constructElapsed = 0f;
         constructDuration = duration;
         transform.localPosition = buriedLocalPosition;
         PlaySfx(constructStart);
+        StartWorkFx();
     }
 
     public void BeginUpgrade(bool instant)
@@ -206,7 +270,8 @@ public class TurretController : MonoBehaviour
             return;
 
         desiredLevel = Mathf.Min(upgradeLevel + 1, MaxLevel);
-        ContinueTowardDesired(instant, false);
+        upgradeSfxOnly = true;
+        ContinueTowardDesired(instant, CompleteSfx.Upgrade);
     }
 
     public void SetTarget(Transform target, Vector3 aimPoint)
@@ -240,14 +305,27 @@ public class TurretController : MonoBehaviour
             return;
         }
 
-        if (!ready || weapon == null || firePoint == null)
+        if (!ready || weapon == null)
+        {
+            TickBarrelSpin(false);
             return;
+        }
+
+        if (firePoint == null && (activeMuzzles == null || activeMuzzles.Length == 0))
+        {
+            TickBarrelSpin(false);
+            return;
+        }
 
         AcquireTarget();
         if (currentTargetBody == null)
+        {
+            TickBarrelSpin(weapon != null && weapon.IsBursting);
             return;
+        }
 
         AimAndShoot();
+        TickBarrelSpin(weapon != null && weapon.IsBursting);
     }
 
     void AcquireTarget()
@@ -329,19 +407,32 @@ public class TurretController : MonoBehaviour
     void AimAndShoot()
     {
         Transform pivot = aimPivot != null ? aimPivot : transform;
-        Vector3 origin = firePoint != null ? firePoint.position : pivot.position;
+        Transform muzzle = CurrentMuzzle();
+        Vector3 origin = muzzle != null
+            ? muzzle.position
+            : (firePoint != null ? firePoint.position : pivot.position);
         Vector3 dir = (currentAimPoint - origin).normalized;
         if (dir.sqrMagnitude < 0.0001f)
             return;
 
-        Quaternion targetRot = Quaternion.LookRotation(dir);
+        Vector3 shotDir = dir;
+        if (TurretResearch.HasTopAttack(this))
+        {
+            Vector3 yaw = dir;
+            yaw.y = 0f;
+            if (yaw.sqrMagnitude < 0.0001f)
+                yaw = pivot.forward;
+            shotDir = (yaw.normalized + Vector3.up).normalized;
+        }
+
+        Quaternion targetRot = Quaternion.LookRotation(shotDir);
         pivot.rotation = Quaternion.Lerp(
             pivot.rotation,
             targetRot,
             Time.deltaTime * rotationSpeed
         );
 
-        float angle = Vector3.Angle(pivot.forward, dir);
+        float angle = Vector3.Angle(pivot.forward, shotDir);
         if (angle > fireAngleThreshold)
             return;
 
@@ -352,7 +443,8 @@ public class TurretController : MonoBehaviour
         }
 
         Debug.DrawLine(origin, currentAimPoint, Color.green);
-        weapon.Fire(origin, dir, currentTarget);
+        if (weapon.Fire(origin, shotDir, currentTarget))
+            AdvanceMuzzle();
     }
 
     bool HasIdentifiedFriendlyOnLine(Vector3 origin, Vector3 dir)
@@ -441,6 +533,7 @@ public class TurretController : MonoBehaviour
         float t = upgradeDuration > 0f
             ? Mathf.Clamp01(upgradeElapsed / upgradeDuration)
             : 1f;
+        AnimateUpgradeSwap(t);
         if (t >= 1f)
             FinishUpgradeWork();
     }
@@ -452,14 +545,14 @@ public class TurretController : MonoBehaviour
         if (assignedCctv != null)
             assignedCctv.RegisterTurret(this);
 
-        ContinueTowardDesired(constructionInstant, true);
+        ContinueTowardDesired(constructionInstant, CompleteSfx.Construct);
     }
 
-    void ContinueTowardDesired(bool instant, bool fromConstruction)
+    void ContinueTowardDesired(bool instant, CompleteSfx completeSfx)
     {
         if (upgradeLevel >= desiredLevel)
         {
-            SetFullyReady(fromConstruction);
+            SetFullyReady(completeSfx);
             return;
         }
 
@@ -467,7 +560,7 @@ public class TurretController : MonoBehaviour
         {
             while (upgradeLevel < desiredLevel)
                 AdvanceLevel();
-            SetFullyReady(fromConstruction);
+            SetFullyReady(completeSfx);
             return;
         }
 
@@ -478,7 +571,7 @@ public class TurretController : MonoBehaviour
     {
         if (upgradeLevel >= desiredLevel || upgradeLevel >= MaxLevel)
         {
-            SetFullyReady(false);
+            SetFullyReady(CompleteSfx.Upgrade);
             return;
         }
 
@@ -487,7 +580,10 @@ public class TurretController : MonoBehaviour
         upgradeElapsed = 0f;
         upgrading = true;
         ready = false;
+        playedUpgradeStartSfx = false;
         ClearTarget();
+        BeginUpgradeSwap();
+        PlayUpgradeStartSfx();
 
         if (upgradeDuration <= 0.01f)
         {
@@ -495,7 +591,7 @@ public class TurretController : MonoBehaviour
             return;
         }
 
-        PlaySfx(upgradeStart);
+        StartWorkFx();
     }
 
     void FinishUpgradeWork()
@@ -504,7 +600,7 @@ public class TurretController : MonoBehaviour
         if (upgradeLevel < desiredLevel)
             StartUpgradeWork();
         else
-            SetFullyReady(false);
+            SetFullyReady(CompleteSfx.Upgrade);
     }
 
     void AdvanceLevel()
@@ -513,19 +609,39 @@ public class TurretController : MonoBehaviour
         ApplyCurrentTier();
     }
 
-    void SetFullyReady(bool fromConstruction)
+    void SetFullyReady(CompleteSfx completeSfx)
     {
         constructing = false;
         upgrading = false;
         ready = true;
+        RestoreVisualRests();
         ApplyCurrentTier();
-        PlaySfx(fromConstruction ? constructComplete : upgradeComplete);
+        StopWorkFx();
+        if (completeSfx == CompleteSfx.Construct)
+            PlaySfx(constructComplete);
+        else if (completeSfx == CompleteSfx.Upgrade)
+            PlaySfx(upgradeComplete);
+        upgradeSfxOnly = false;
     }
 
     public void PlayFireSfx()
     {
         Vector3 pos = firePoint != null ? firePoint.position : transform.position;
         GameSfx.PlayWorld(fire, pos);
+    }
+
+    public void StartFireLoop()
+    {
+        if (fireLoop != null && fireLoop.isPlaying)
+            return;
+        StopFireLoop();
+        fireLoop = GameSfx.PlayAttachedLoop(fire, transform);
+    }
+
+    public void StopFireLoop()
+    {
+        GameSfx.StopAttached(fireLoop);
+        fireLoop = null;
     }
 
     public void PlayReloadSfx()
@@ -540,6 +656,10 @@ public class TurretController : MonoBehaviour
 
     void PlaySfx(SfxEvent sfx)
     {
+        if (sfx == null)
+            return;
+        if (upgradeSfxOnly && (sfx == constructStart || sfx == constructComplete))
+            return;
         GameSfx.PlayWorld(sfx, transform.position);
     }
 
@@ -556,20 +676,18 @@ public class TurretController : MonoBehaviour
                 if (entry == null || entry.visualRoot == null)
                     continue;
                 bool on = visible != null && entry.visualRoot == visible;
-                if (entry.visualRoot != gameObject)
-                    entry.visualRoot.SetActive(on);
+                SetVisualActive(entry.visualRoot, on);
             }
         }
+
+        SyncNamedTierVisuals(visible);
 
         if (tier != null)
         {
             range = (tier.range > 0f ? tier.range : range) + TurretResearch.RangeBonus(this);
             armorPierce = tier.armorPierce + TurretResearch.ArmorPierceBonus(this);
             aimPivot = ResolveBarrel(tier, visible);
-            if (tier.firePoint != null)
-                firePoint = tier.firePoint;
-            else
-                firePoint = FindNamed(visible != null ? visible.transform : transform, "FirePoint");
+            BindHardpoints(tier, visible);
 
             if (weapon != null)
             {
@@ -583,10 +701,7 @@ public class TurretController : MonoBehaviour
         }
         else
         {
-            if (aimPivot == null)
-                aimPivot = FindNamed(transform, "Turret_barrel");
-            if (firePoint == null)
-                firePoint = FindNamed(transform, "FirePoint");
+            BindHardpoints(null, null);
         }
     }
 
@@ -594,6 +709,10 @@ public class TurretController : MonoBehaviour
     {
         if (HasRenderable(tier != null ? tier.visualRoot : null))
             return tier.visualRoot;
+
+        GameObject named = FindTierVisual(upgradeLevel);
+        if (HasRenderable(named))
+            return named;
 
         if (upgradeTiers == null)
             return null;
@@ -614,6 +733,10 @@ public class TurretController : MonoBehaviour
             return tier.barrel;
 
         Transform search = visible != null ? visible.transform : transform;
+        Transform turretNode = FindNamed(search, "Turret");
+        if (turretNode != null && turretNode != transform)
+            return turretNode;
+
         Transform named = FindNamed(search, "Turret_barrel");
         return named != null ? named : search;
     }
@@ -632,6 +755,281 @@ public class TurretController : MonoBehaviour
         if (root == null)
             return false;
         return root.GetComponentInChildren<Renderer>(true) != null;
+    }
+
+    void SyncNamedTierVisuals(GameObject visible)
+    {
+        for (int i = 1; i <= 3; i++)
+        {
+            Transform node = transform.Find("MG_T" + i);
+            if (node == null)
+                node = transform.Find("Tier_" + i);
+            if (node == null)
+                continue;
+            SetVisualActive(node.gameObject, visible != null && node.gameObject == visible);
+        }
+    }
+
+    GameObject FindTierVisual(int level)
+    {
+        string[] names =
+        {
+            "MG_T" + level,
+            "Tier_" + level,
+            "Tier " + level
+        };
+        for (int i = 0; i < names.Length; i++)
+        {
+            Transform node = transform.Find(names[i]);
+            if (node == null)
+                node = FindNamed(transform, names[i]);
+            if (node != null)
+                return node.gameObject;
+        }
+
+        return null;
+    }
+
+    void BindHardpoints(TurretUpgradeTier tier, GameObject visible)
+    {
+        Transform search = visible != null ? visible.transform : transform;
+        List<Transform> muzzles = new List<Transform>();
+        List<Transform> barrels = new List<Transform>();
+        bool rotary = IsRotaryMachineGun(visible);
+
+        AppendAssigned(muzzles, tier != null ? tier.muzzles : null);
+        AppendAssigned(barrels, tier != null ? tier.barrels : null);
+
+        if (rotary)
+        {
+            if (muzzles.Count == 0)
+                CollectNamed(search, muzzles, new[] { "Muzzle" }, new[] { "Collar" });
+            if (barrels.Count == 0)
+                CollectNamed(search, barrels, new[] { "Barrel", "GatlingTube" }, new[] { "Collar" });
+            if (muzzles.Count == 0)
+                CollectNamed(search, muzzles, new[] { "FirePoint" }, null);
+        }
+
+        SortByName(muzzles);
+        SortByName(barrels);
+
+        if (muzzles.Count == 0)
+        {
+            for (int i = 0; i < barrels.Count; i++)
+            {
+                Transform tip = EnsureTipMuzzle(barrels[i]);
+                if (tip != null && !muzzles.Contains(tip))
+                    muzzles.Add(tip);
+            }
+        }
+
+        if (tier != null && tier.firePoint != null && muzzles.Count == 0)
+            muzzles.Add(tier.firePoint);
+
+        Transform foundFire = FindNamed(search, "FirePoint");
+        if (foundFire != null && muzzles.Count == 0)
+            muzzles.Add(foundFire);
+
+        activeMuzzles = muzzles.ToArray();
+        spinBarrels = barrels.ToArray();
+        barrelSpinAxes = new Vector3[spinBarrels.Length];
+        for (int i = 0; i < spinBarrels.Length; i++)
+            barrelSpinAxes[i] = GuessSpinAxis(spinBarrels[i]);
+
+        barrelSpinSpeed = tier != null && tier.barrelSpinSpeed > 1f ? tier.barrelSpinSpeed : 720f;
+        if (muzzleIndex >= activeMuzzles.Length)
+            muzzleIndex = 0;
+
+        if (activeMuzzles.Length > 0)
+            firePoint = activeMuzzles[0];
+        else if (tier != null && tier.firePoint != null)
+            firePoint = tier.firePoint;
+        else
+            firePoint = foundFire;
+    }
+
+    Transform CurrentMuzzle()
+    {
+        if (activeMuzzles == null || activeMuzzles.Length == 0)
+            return firePoint;
+        if (muzzleIndex < 0 || muzzleIndex >= activeMuzzles.Length)
+            muzzleIndex = 0;
+        Transform muzzle = activeMuzzles[muzzleIndex];
+        return muzzle != null ? muzzle : firePoint;
+    }
+
+    void AdvanceMuzzle()
+    {
+        if (activeMuzzles == null || activeMuzzles.Length <= 1)
+            return;
+        muzzleIndex = (muzzleIndex + 1) % activeMuzzles.Length;
+    }
+
+    void TickBarrelSpin(bool firing)
+    {
+        if (spinBarrels == null || spinBarrels.Length == 0)
+            return;
+
+        float target = firing && !isReloadingLike() ? barrelSpinSpeed : 0f;
+        barrelSpinVel = Mathf.MoveTowards(barrelSpinVel, target, barrelSpinSpeed * Time.deltaTime * 3f);
+        if (barrelSpinVel <= 0.01f)
+            return;
+
+        float step = barrelSpinVel * Time.deltaTime;
+        for (int i = 0; i < spinBarrels.Length; i++)
+        {
+            Transform barrel = spinBarrels[i];
+            if (barrel == null || barrel == aimPivot)
+                continue;
+            Vector3 axis = i < barrelSpinAxes.Length ? barrelSpinAxes[i] : Vector3.forward;
+            if (axis.sqrMagnitude < 0.0001f)
+                axis = Vector3.forward;
+            barrel.Rotate(axis.normalized, step, Space.Self);
+        }
+    }
+
+    bool isReloadingLike()
+    {
+        return weapon != null && weapon.IsReloading;
+    }
+
+    bool IsRotaryMachineGun(GameObject visible)
+    {
+        if (!string.IsNullOrEmpty(researchGroup) &&
+            string.Equals(researchGroup, TurretResearch.MachineGun, System.StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (visible != null && visible.name.StartsWith("MG_", System.StringComparison.OrdinalIgnoreCase))
+            return true;
+        return name.IndexOf("Turret_MG", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    static void AppendAssigned(List<Transform> dest, Transform[] source)
+    {
+        if (source == null)
+            return;
+        for (int i = 0; i < source.Length; i++)
+        {
+            if (source[i] != null && !dest.Contains(source[i]))
+                dest.Add(source[i]);
+        }
+    }
+
+    static void CollectNamed(Transform root, List<Transform> dest, string[] prefixes, string[] excludes)
+    {
+        if (root == null)
+            return;
+        Transform[] all = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            Transform node = all[i];
+            if (node == null || node == root)
+                continue;
+            if (!NameMatches(node.name, prefixes, excludes))
+                continue;
+            if (!dest.Contains(node))
+                dest.Add(node);
+        }
+    }
+
+    static bool NameMatches(string name, string[] prefixes, string[] excludes)
+    {
+        if (string.IsNullOrEmpty(name) || prefixes == null)
+            return false;
+        if (excludes != null)
+        {
+            for (int i = 0; i < excludes.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(excludes[i]) &&
+                    name.IndexOf(excludes[i], System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return false;
+            }
+        }
+
+        for (int i = 0; i < prefixes.Length; i++)
+        {
+            if (!string.IsNullOrEmpty(prefixes[i]) &&
+                name.StartsWith(prefixes[i], System.StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    static void SortByName(List<Transform> list)
+    {
+        list.Sort((a, b) => string.Compare(a != null ? a.name : "", b != null ? b.name : "", System.StringComparison.OrdinalIgnoreCase));
+    }
+
+    static Transform EnsureTipMuzzle(Transform barrel)
+    {
+        if (barrel == null)
+            return null;
+
+        Transform existing = barrel.Find("Muzzle");
+        if (existing != null)
+            return existing;
+
+        GameObject muzzle = new GameObject("Muzzle");
+        muzzle.transform.SetParent(barrel, false);
+        muzzle.transform.localRotation = Quaternion.identity;
+        muzzle.transform.position = BarrelTip(barrel);
+        return muzzle.transform;
+    }
+
+    static Vector3 BarrelTip(Transform barrel)
+    {
+        Renderer renderer = barrel.GetComponent<Renderer>();
+        if (renderer == null)
+            renderer = barrel.GetComponentInChildren<Renderer>();
+        if (renderer == null)
+            return barrel.position + barrel.forward * 0.45f;
+
+        Vector3 forward = barrel.forward;
+        Bounds bounds = renderer.bounds;
+        Vector3[] corners =
+        {
+            bounds.min,
+            bounds.max,
+            new Vector3(bounds.min.x, bounds.min.y, bounds.max.z),
+            new Vector3(bounds.min.x, bounds.max.y, bounds.min.z),
+            new Vector3(bounds.max.x, bounds.min.y, bounds.min.z),
+            new Vector3(bounds.max.x, bounds.max.y, bounds.min.z),
+            new Vector3(bounds.max.x, bounds.min.y, bounds.max.z),
+            new Vector3(bounds.min.x, bounds.max.y, bounds.max.z)
+        };
+
+        float best = float.NegativeInfinity;
+        Vector3 tip = barrel.position;
+        for (int i = 0; i < corners.Length; i++)
+        {
+            float d = Vector3.Dot(corners[i] - barrel.position, forward);
+            if (d > best)
+            {
+                best = d;
+                tip = barrel.position + forward * d;
+            }
+        }
+
+        return tip;
+    }
+
+    static Vector3 GuessSpinAxis(Transform barrel)
+    {
+        if (barrel == null)
+            return Vector3.forward;
+
+        MeshFilter filter = barrel.GetComponent<MeshFilter>();
+        if (filter == null)
+            filter = barrel.GetComponentInChildren<MeshFilter>();
+        if (filter == null || filter.sharedMesh == null)
+            return Vector3.forward;
+
+        Vector3 size = filter.sharedMesh.bounds.size;
+        if (size.z >= size.x && size.z >= size.y)
+            return Vector3.forward;
+        if (size.y >= size.x)
+            return Vector3.up;
+        return Vector3.right;
     }
 
     static Transform FindNamed(Transform root, string name)
@@ -653,23 +1051,219 @@ public class TurretController : MonoBehaviour
 
     float GetRiseHeight()
     {
-        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
-        if (renderers == null || renderers.Length == 0)
+        Bounds bounds;
+        if (!TryGetVisualBounds(true, out bounds))
             return 2f;
-
-        Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
-        {
-            if (renderers[i] != null)
-                bounds.Encapsulate(renderers[i].bounds);
-        }
-
         return Mathf.Max(1f, bounds.size.y + 0.2f);
     }
 
     void OnDestroy()
     {
+        StopFireLoop();
+        StopWorkFx();
         if (assignedCctv != null)
             assignedCctv.UnregisterTurret(this);
+    }
+
+    void CacheVisualRests()
+    {
+        if (upgradeTiers == null)
+        {
+            visualRestLocal = null;
+            return;
+        }
+
+        visualRestLocal = new Vector3[upgradeTiers.Length];
+        for (int i = 0; i < upgradeTiers.Length; i++)
+        {
+            GameObject root = upgradeTiers[i] != null ? upgradeTiers[i].visualRoot : null;
+            visualRestLocal[i] = root != null ? root.transform.localPosition : Vector3.zero;
+        }
+    }
+
+    Vector3 RestLocalOf(GameObject root)
+    {
+        if (root == null)
+            return Vector3.zero;
+        if (visualRestLocal != null && upgradeTiers != null)
+        {
+            for (int i = 0; i < upgradeTiers.Length && i < visualRestLocal.Length; i++)
+            {
+                if (upgradeTiers[i] != null && upgradeTiers[i].visualRoot == root)
+                    return visualRestLocal[i];
+            }
+        }
+
+        return root.transform.localPosition;
+    }
+
+    Vector3 BuriedLocalOf(GameObject root, Vector3 rest)
+    {
+        if (root == null)
+            return rest;
+        Transform parent = root.transform.parent;
+        float height = GetVisualRiseHeight(root);
+        Vector3 down = parent != null
+            ? parent.InverseTransformVector(Vector3.down * height)
+            : Vector3.down * height;
+        return rest + down;
+    }
+
+    void RestoreVisualRests()
+    {
+        if (upgradeTiers == null)
+            return;
+
+        for (int i = 0; i < upgradeTiers.Length; i++)
+        {
+            GameObject root = upgradeTiers[i] != null ? upgradeTiers[i].visualRoot : null;
+            if (root == null)
+                continue;
+            root.transform.localPosition = RestLocalOf(root);
+        }
+    }
+
+    void BeginUpgradeSwap()
+    {
+        upgradeOutgoing = ResolveVisibleRoot(GetTier(upgradeLevel));
+        upgradeIncoming = ResolveVisibleRoot(GetTier(upgradeLevel + 1));
+        upgradeOutRest = RestLocalOf(upgradeOutgoing);
+        upgradeInRest = RestLocalOf(upgradeIncoming);
+        upgradeOutBuried = BuriedLocalOf(upgradeOutgoing, upgradeOutRest);
+        upgradeInBuried = BuriedLocalOf(upgradeIncoming, upgradeInRest);
+
+        if (upgradeOutgoing != null)
+        {
+            SetVisualActive(upgradeOutgoing, true);
+            upgradeOutgoing.transform.localPosition = upgradeOutRest;
+        }
+
+        if (upgradeIncoming != null && upgradeIncoming != upgradeOutgoing)
+        {
+            SetVisualActive(upgradeIncoming, false);
+            upgradeIncoming.transform.localPosition = upgradeInBuried;
+        }
+    }
+
+    void AnimateUpgradeSwap(float t)
+    {
+        t = Mathf.Clamp01(t);
+        if (upgradeIncoming == null && upgradeOutgoing == null)
+            return;
+
+        GameObject outgoing = upgradeOutgoing;
+        GameObject incoming = upgradeIncoming != null ? upgradeIncoming : upgradeOutgoing;
+        bool same = incoming == outgoing || outgoing == null;
+
+        float sinkT = Smooth01(Mathf.Clamp01(t * 2f));
+        float riseT = Smooth01(Mathf.Clamp01(t * 2f - 1f));
+
+        if (same)
+        {
+            if (incoming == null)
+                return;
+            incoming.transform.localPosition = t < 0.5f
+                ? Vector3.Lerp(upgradeOutRest, upgradeOutBuried, sinkT)
+                : Vector3.Lerp(upgradeInBuried, upgradeInRest, riseT);
+            return;
+        }
+
+        if (t < 0.5f)
+        {
+            SetVisualActive(outgoing, true);
+            SetVisualActive(incoming, false);
+            outgoing.transform.localPosition = Vector3.Lerp(upgradeOutRest, upgradeOutBuried, sinkT);
+        }
+        else
+        {
+            if (outgoing != null)
+            {
+                outgoing.transform.localPosition = upgradeOutRest;
+                SetVisualActive(outgoing, false);
+            }
+
+            SetVisualActive(incoming, true);
+            incoming.transform.localPosition = Vector3.Lerp(upgradeInBuried, upgradeInRest, riseT);
+        }
+    }
+
+    void SetVisualActive(GameObject root, bool on)
+    {
+        if (root == null || root == gameObject)
+            return;
+        if (root.activeSelf != on)
+            root.SetActive(on);
+    }
+
+    static float Smooth01(float t)
+    {
+        t = Mathf.Clamp01(t);
+        return t * t * (3f - 2f * t);
+    }
+
+    void PlayUpgradeStartSfx()
+    {
+        if (playedUpgradeStartSfx)
+            return;
+        playedUpgradeStartSfx = true;
+        PlaySfx(upgradeStart);
+    }
+
+    void StartWorkFx()
+    {
+        if (workFxInstance != null)
+            return;
+
+        GameObject prefab = ResolveWorkFxPrefab();
+        if (prefab == null)
+            return;
+
+        Transform parent = transform.parent != null ? transform.parent : transform;
+        Vector3 world = parent.TransformPoint(builtLocalPosition);
+        workFxInstance = CombatVfx.PlayLoop(prefab, world, parent);
+    }
+
+    void StopWorkFx()
+    {
+        if (workFxInstance == null)
+            return;
+        CombatVfx.StopLoop(workFxInstance);
+        workFxInstance = null;
+    }
+
+    GameObject ResolveWorkFxPrefab()
+    {
+        if (workLoopFx != null)
+            return workLoopFx;
+
+        TurretPlatformPlacer placer = FindFirstObjectByType<TurretPlatformPlacer>();
+        return placer != null ? placer.turretWorkLoopFx : null;
+    }
+
+    float GetVisualRiseHeight(GameObject root)
+    {
+        if (root == null)
+            return GetRiseHeight();
+
+        float height = 0f;
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null)
+                continue;
+
+            MeshFilter filter = renderer.GetComponent<MeshFilter>();
+            if (filter != null && filter.sharedMesh != null)
+            {
+                Vector3 size = Vector3.Scale(filter.sharedMesh.bounds.size, renderer.transform.lossyScale);
+                height = Mathf.Max(height, size.y);
+                continue;
+            }
+
+            height = Mathf.Max(height, renderer.bounds.size.y);
+        }
+
+        return Mathf.Max(1f, height + 0.2f);
     }
 }

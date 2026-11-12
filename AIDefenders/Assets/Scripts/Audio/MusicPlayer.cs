@@ -6,6 +6,8 @@ public class MusicPlayer : MonoBehaviour
     public WaveDirector waveDirector;
     public AudioClip prepMusic;
     public AudioClip combatMusic;
+    [Tooltip("메인 메뉴처럼 전투가 없는 장면에서 재생할 배경음악입니다.")]
+    public AudioClip menuMusic;
     [Range(0f, 1f)]
     public float volume = 0.55f;
     public float fadeSeconds = 1.25f;
@@ -41,7 +43,7 @@ public class MusicPlayer : MonoBehaviour
     {
         if (!playOnStart)
             return;
-        Play(prepMusic != null ? prepMusic : combatMusic);
+        Play(StartClip());
     }
 
     void OnDisable()
@@ -67,6 +69,15 @@ public class MusicPlayer : MonoBehaviour
     void HandleStageComplete()
     {
         FadeOut();
+    }
+
+    AudioClip StartClip()
+    {
+        if (menuMusic != null)
+            return menuMusic;
+        if (prepMusic != null)
+            return prepMusic;
+        return combatMusic;
     }
 
     public void Play(AudioClip clip)

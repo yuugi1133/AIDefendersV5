@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
@@ -34,4 +35,37 @@ public class StageData : ScriptableObject
     public int startingFunds = 300;
     public float startingBaseHP = 20f;
     public WaveData[] waves;
+
+    public void CollectSpawnTargets(List<Target_Base> results)
+    {
+        if (results == null || waves == null)
+            return;
+
+        for (int w = 0; w < waves.Length; w++)
+        {
+            WaveData wave = waves[w];
+            if (wave == null || wave.groups == null)
+                continue;
+
+            for (int g = 0; g < wave.groups.Length; g++)
+            {
+                SpawnGroup group = wave.groups[g];
+                if (group == null || group.targets == null)
+                    continue;
+
+                for (int t = 0; t < group.targets.Length; t++)
+                {
+                    SpawnTargetEntry entry = group.targets[t];
+                    if (entry == null || entry.prefab == null)
+                        continue;
+
+                    Target_Base target = entry.prefab.GetComponent<Target_Base>();
+                    if (target == null)
+                        target = entry.prefab.GetComponentInChildren<Target_Base>(true);
+                    if (target != null && !results.Contains(target))
+                        results.Add(target);
+                }
+            }
+        }
+    }
 }

@@ -13,10 +13,12 @@ public class HudSkillUi
     readonly Color readyBorder = new Color(0.55f, 0.75f, 0.7f, 0.85f);
     readonly Color primedBorder = new Color(1f, 0.85f, 0.25f, 0.95f);
     readonly Color primedCrosshair = new Color(1f, 0.85f, 0.25f, 0.95f);
+    static Sprite solidSprite;
 
     struct SlotView
     {
         public Image background;
+        public Image icon;
         public Image cooldown;
         public Outline outline;
         public Text key;
@@ -52,7 +54,7 @@ public class HudSkillUi
         barRt.anchorMax = new Vector2(0.5f, 0f);
         barRt.pivot = new Vector2(0.5f, 0f);
         barRt.anchoredPosition = new Vector2(0f, bottom);
-        barRt.sizeDelta = new Vector2(totalWidth, slotSize);
+        barRt.sizeDelta = new Vector2(totalWidth, slotSize + 24f);
 
         HorizontalLayoutGroup layout = bar.AddComponent<HorizontalLayoutGroup>();
         layout.spacing = gap;
@@ -71,7 +73,7 @@ public class HudSkillUi
         hintRt.anchorMin = new Vector2(0.5f, 0f);
         hintRt.anchorMax = new Vector2(0.5f, 0f);
         hintRt.pivot = new Vector2(0.5f, 0f);
-        hintRt.anchoredPosition = new Vector2(0f, bottom + slotSize + 8f);
+        hintRt.anchoredPosition = new Vector2(0f, bottom + slotSize + 32f);
         hintRt.sizeDelta = new Vector2(640f, 28f);
     }
 
@@ -103,6 +105,8 @@ public class HudSkillUi
 
         if (skill == null)
         {
+            slot.icon.sprite = null;
+            slot.icon.enabled = false;
             slot.name.text = "빈 칸";
             slot.name.color = new Color(1f, 1f, 1f, 0.35f);
             slot.status.text = "";
@@ -110,6 +114,11 @@ public class HudSkillUi
             return;
         }
 
+        Sprite icon = skill.HudIcon;
+        if (slot.icon.sprite != icon)
+            slot.icon.sprite = icon;
+        slot.icon.enabled = icon != null;
+        slot.icon.color = skill.IsReady ? Color.white : new Color(0.6f, 0.65f, 0.7f, 1f);
         slot.name.color = Color.white;
         slot.name.text = string.IsNullOrWhiteSpace(skill.displayName) ? skill.name : skill.displayName;
         slot.cooldown.fillAmount = skill.IsReady ? 0f : skill.CooldownNormalized;
@@ -123,49 +132,76 @@ public class HudSkillUi
 
     SlotView CreateSlot(RectTransform parent, int index, float size)
     {
-        Image background = UiFont.AddImage(parent, "Slot_" + index, new Color(0.06f, 0.08f, 0.1f, 0.78f));
+        Image background = CreateImage(parent, "Slot_" + index, UiSkin.Blue);
+        UiSkin.Surface(background);
         LayoutElement layout = background.gameObject.AddComponent<LayoutElement>();
         layout.minWidth = size;
-        layout.minHeight = size;
+        layout.minHeight = size + 24f;
         layout.preferredWidth = size;
-        layout.preferredHeight = size;
+        layout.preferredHeight = size + 24f;
 
-        Outline outline = background.gameObject.AddComponent<Outline>();
+        Outline outline = background.GetComponent<Outline>();
         outline.effectColor = readyBorder;
         outline.effectDistance = new Vector2(2f, -2f);
 
-        Image cooldown = UiFont.AddImage(background.rectTransform, "Cooldown", new Color(0f, 0f, 0f, 0.55f));
+        Image icon = CreateImage(background.rectTransform, "Icon", Color.white);
+        icon.raycastTarget = false;
+        icon.sprite = null;
+        icon.enabled = false;
+        icon.preserveAspect = true;
+        icon.rectTransform.anchorMin = new Vector2(0.5f, 1f);
+        icon.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+        icon.rectTransform.pivot = new Vector2(0.5f, 1f);
+        icon.rectTransform.anchoredPosition = new Vector2(0f, -6f);
+        icon.rectTransform.sizeDelta = new Vector2(size - 12f, size - 12f);
+
+        Image cooldown = CreateImage(background.rectTransform, "Cooldown", new Color(0f, 0f, 0f, 0.6f));
         cooldown.raycastTarget = false;
         cooldown.type = Image.Type.Filled;
         cooldown.fillMethod = Image.FillMethod.Vertical;
         cooldown.fillOrigin = (int)Image.OriginVertical.Bottom;
         cooldown.fillAmount = 0f;
         UiFont.Stretch(cooldown.rectTransform);
+        cooldown.rectTransform.offsetMin = new Vector2(0f, 24f);
 
-        Text key = UiFont.AddText(background.rectTransform, "Key", "Q", 16, TextAnchor.UpperLeft, Color.white, UiType.BodyBold);
+        Image namePlate = CreateImage(background.rectTransform, "NamePlate", new Color(0f, 0f, 0f, 0.42f));
+        namePlate.raycastTarget = false;
+        namePlate.rectTransform.anchorMin = Vector2.zero;
+        namePlate.rectTransform.anchorMax = new Vector2(1f, 0f);
+        namePlate.rectTransform.pivot = new Vector2(0.5f, 0f);
+        namePlate.rectTransform.sizeDelta = new Vector2(0f, 24f);
+
+        Image keyBadge = CreateImage(background.rectTransform, "KeyBadge", new Color(0.02f, 0.03f, 0.04f, 0.9f));
+        keyBadge.raycastTarget = false;
+        keyBadge.rectTransform.anchorMin = new Vector2(0f, 1f);
+        keyBadge.rectTransform.anchorMax = new Vector2(0f, 1f);
+        keyBadge.rectTransform.pivot = new Vector2(0f, 1f);
+        keyBadge.rectTransform.anchoredPosition = new Vector2(4f, -4f);
+        keyBadge.rectTransform.sizeDelta = new Vector2(20f, 20f);
+
+        Text key = UiFont.AddText(keyBadge.rectTransform, "Key", "Q", 14, TextAnchor.MiddleCenter, Color.white, UiType.BodyBold);
         key.raycastTarget = false;
-        RectTransform keyRt = key.rectTransform;
-        keyRt.anchorMin = new Vector2(0f, 0.7f);
-        keyRt.anchorMax = new Vector2(1f, 1f);
-        keyRt.offsetMin = new Vector2(8f, 0f);
-        keyRt.offsetMax = new Vector2(-8f, -6f);
+        UiFont.Stretch(key.rectTransform);
 
-        Text name = UiFont.AddText(background.rectTransform, "Name", "", 16, TextAnchor.MiddleLeft, Color.white, UiType.BodyMedium);
+        Text name = UiFont.AddText(namePlate.rectTransform, "Name", "", 13, TextAnchor.MiddleCenter, Color.white, UiType.BodyMedium);
         name.raycastTarget = false;
         name.horizontalOverflow = HorizontalWrapMode.Wrap;
+        name.resizeTextForBestFit = true;
+        name.resizeTextMinSize = 10;
+        name.resizeTextMaxSize = 13;
         RectTransform nameRt = name.rectTransform;
-        nameRt.anchorMin = new Vector2(0f, 0.28f);
-        nameRt.anchorMax = new Vector2(1f, 0.72f);
-        nameRt.offsetMin = new Vector2(8f, 0f);
-        nameRt.offsetMax = new Vector2(-8f, 0f);
+        UiFont.Stretch(nameRt);
+        nameRt.offsetMin = new Vector2(3f, 0f);
+        nameRt.offsetMax = new Vector2(-3f, 0f);
 
-        Text status = UiFont.AddText(background.rectTransform, "Status", "", 14, TextAnchor.LowerLeft, mutedHint(), UiType.Body);
+        Text status = UiFont.AddText(background.rectTransform, "Status", "", 20, TextAnchor.MiddleCenter, mutedHint(), UiType.BodyBold);
         status.raycastTarget = false;
         RectTransform statusRt = status.rectTransform;
-        statusRt.anchorMin = new Vector2(0f, 0f);
-        statusRt.anchorMax = new Vector2(1f, 0.3f);
-        statusRt.offsetMin = new Vector2(8f, 6f);
-        statusRt.offsetMax = new Vector2(-8f, 0f);
+        UiFont.Stretch(statusRt);
+        statusRt.offsetMin = new Vector2(0f, 24f);
+        Outline statusOutline = status.gameObject.AddComponent<Outline>();
+        statusOutline.effectColor = new Color(0f, 0f, 0f, 0.95f);
+        statusOutline.effectDistance = new Vector2(1f, -1f);
 
         int captured = index;
         EventTrigger trigger = background.gameObject.AddComponent<EventTrigger>();
@@ -184,6 +220,7 @@ public class HudSkillUi
         return new SlotView
         {
             background = background,
+            icon = icon,
             cooldown = cooldown,
             outline = outline,
             key = key,
@@ -199,7 +236,7 @@ public class HudSkillUi
 
     static Image CreateBar(RectTransform parent, string name, Color color, Vector2 size)
     {
-        Image image = UiFont.AddImage(parent, name, color);
+        Image image = CreateImage(parent, name, color);
         image.raycastTarget = false;
         RectTransform rt = image.rectTransform;
         rt.anchorMin = new Vector2(0.5f, 0.5f);
@@ -207,6 +244,23 @@ public class HudSkillUi
         rt.pivot = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = size;
         rt.anchoredPosition = Vector2.zero;
+        return image;
+    }
+
+    static Image CreateImage(RectTransform parent, string name, Color color)
+    {
+        if (solidSprite == null)
+        {
+            Texture2D texture = Texture2D.whiteTexture;
+            solidSprite = Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+            solidSprite.name = "SkillHudSolid";
+        }
+
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+        Image image = go.GetComponent<Image>();
+        image.rectTransform.SetParent(parent, false);
+        image.sprite = solidSprite;
+        image.color = color;
         return image;
     }
 }

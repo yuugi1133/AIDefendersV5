@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AmmoData_Precision_Shot
   m_EditorClassIdentifier: Assembly-CSharp::AmmoData
   fireMode: 0
-  damage: 15
+  damage: 160
   bulletSpeed: 90
   gravity: 0
   lifetime: 5
@@ -25,6 +25,8 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  heatPerSecond: 20
+  coolPerSecond: 16
   muzzleEffect: {fileID: 100006, guid: c9eb9af70afad734091dff429aff1cb1, type: 3}
   trailEffect: {fileID: 0}
   impactEffect: {fileID: 100000, guid: 7d9314b53c08d5c4d93c6a450caf5bf6, type: 3}

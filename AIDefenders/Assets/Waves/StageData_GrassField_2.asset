@@ -12,78 +12,491 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7c3e91f2b4d4e6a8c1f0d5e9b2a8471, type: 3}
   m_Name: StageData_GrassField_2
   m_EditorClassIdentifier: Assembly-CSharp::StageData
-  firstPrepTime: 30
+  firstPrepTime: 50
   startingFunds: 400
   startingBaseHP: 20
   waves:
   - waveName: Wave 1
     duration: 60
-    nextWavePrepTime: 20
+    nextWavePrepTime: 40
     groups:
     - spawnTime: 0
       spawnerId: 
       targets:
       - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
         count: 2
-    - spawnTime: 0.4
-      spawnerId: 
-      targets:
-      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-        count: 3
-    - spawnTime: 0.8
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
+    - spawnTime: 2
       spawnerId: 
       targets:
       - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
         count: 2
-    - spawnTime: 1
-      spawnerId: 
-      targets:
-      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-        count: 4
-    - spawnTime: 2
-      spawnerId: 
-      targets:
-      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-        count: 4
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
     - spawnTime: 3
       spawnerId: 
       targets:
       - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
         count: 3
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
+    - spawnTime: 6
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: fb9c7b065b38aef4fa899b370b51feee, type: 3}
+        count: 1
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 10
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 2
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
+    - spawnTime: 12
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 2
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
+    - spawnTime: 13
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 2
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
+    - spawnTime: 16
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 25
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 2
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 6
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 30
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 8
+      - prefab: {fileID: 8528450990467141018, guid: fb9c7b065b38aef4fa899b370b51feee, type: 3}
+        count: 1
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 30
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 3
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 30
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 3
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 30
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 3
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 1
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+  - waveName: Wave 2
+    duration: 80
+    nextWavePrepTime: 50
+    groups:
+    - spawnTime: 0
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 4
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 6
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 2
+    - spawnTime: 10
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 2
+    - spawnTime: 15
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 17
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 19
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 27
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 29
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 31
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 33
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 38
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 2
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 6
+    - spawnTime: 38
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 2
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 6
+    - spawnTime: 40
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+    - spawnTime: 40
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+  - waveName: Wave 3
+    duration: 80
+    nextWavePrepTime: 50
+    groups:
+    - spawnTime: 0
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 4
+      spawnerId: 
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 5
     - spawnTime: 8
       spawnerId: 
       targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 17
+      spawnerId: Enemy spawner2
+      targets:
       - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-        count: 6
-    - spawnTime: 9
+        count: 4
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 25
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 2
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 3
+    - spawnTime: 30
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 4
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 3
+    - spawnTime: 36
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 1
+    - spawnTime: 38
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 39
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 46
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 5
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 46
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 5
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+  - waveName: Wave 4
+    duration: 80
+    nextWavePrepTime: 50
+    groups:
+    - spawnTime: 0
       spawnerId: 
       targets:
-      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
         count: 2
-    - spawnTime: 11
-      spawnerId: 
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 0
+      spawnerId: Enemy spawner2
       targets:
-      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
         count: 2
-    - spawnTime: 13
-      spawnerId: 
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 5
+      spawnerId: Enemy spawner2
       targets:
-      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
         count: 2
-    - spawnTime: 16
-      spawnerId: 
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 5
+    - spawnTime: 10
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 5
+    - spawnTime: 18
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 22
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 30
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 31
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 32
+      spawnerId: Enemy spawner1
       targets:
       - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
         count: 4
-    - spawnTime: 25
-      spawnerId: 
+    - spawnTime: 39
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 40
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 41
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+  - waveName: Wave 5
+    duration: 80
+    nextWavePrepTime: 50
+    groups:
+    - spawnTime: 0
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 0
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 2
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 4
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 3
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: fb9c7b065b38aef4fa899b370b51feee, type: 3}
+        count: 1
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 7
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 7
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 2
+    - spawnTime: 10
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 3
+    - spawnTime: 13
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 14
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 17
+      spawnerId: Enemy spawner1
       targets:
       - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
-        count: 6
+        count: 5
       - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 5
+    - spawnTime: 21
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 1
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 3
+    - spawnTime: 21
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 24
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
         count: 4
     - spawnTime: 26
-      spawnerId: 
+      spawnerId: Enemy spawner1
       targets:
       - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
-        count: 8
+        count: 4
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 1
+    - spawnTime: 35
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 35
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 4972366810073893737, guid: 94d62a0cb76a2da40a6641c8d1960736, type: 3}
+        count: 5
+    - spawnTime: 37
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 5
+    - spawnTime: 37
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: 9a51652451728ba44a12133299bc09a9, type: 3}
+        count: 5
+    - spawnTime: 38
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: fb9c7b065b38aef4fa899b370b51feee, type: 3}
+        count: 2
+    - spawnTime: 38
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 8528450990467141018, guid: fb9c7b065b38aef4fa899b370b51feee, type: 3}
+        count: 2
+    - spawnTime: 40
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 2
+    - spawnTime: 40
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 6069087755407716810, guid: 0e36e2a7ae5b5174cbe8b01224de5e15, type: 3}
+        count: 2
+    - spawnTime: 42
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 42
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 3101380310544786705, guid: 47b05fc38e6feab49a284fb411da2b86, type: 3}
+        count: 2
+    - spawnTime: 45
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 45
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 46
+      spawnerId: Enemy spawner1
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1
+    - spawnTime: 47
+      spawnerId: Enemy spawner2
+      targets:
+      - prefab: {fileID: 55401012592310303, guid: 4be2ef833df23494faf6241fdc0dd620, type: 3}
+        count: 1

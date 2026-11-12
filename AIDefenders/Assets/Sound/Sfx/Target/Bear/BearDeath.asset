@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a1c9e4f2b5846d0a3e8c1f0b9d24680, type: 3}
   m_Name: BearDeath
   m_EditorClassIdentifier: Assembly-CSharp::SfxEvent
-  clips: []
+  clips:
+  - {fileID: 8300000, guid: e2c9e7693dd10804a8bfa93a311772eb, type: 3}
+  - {fileID: 8300000, guid: c667adb2ed48cf34994ae7a57e89c8c4, type: 3}
   volume: 0.9
   pitch: {x: 0.92, y: 1.04}

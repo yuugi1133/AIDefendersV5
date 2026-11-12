@@ -121,7 +121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8a97d508256a2243aa863bbd2ef1bc4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_Bear
-  maxHP: 100
+  maxHP: 2200
   currentHP: 0
   moveSpeed: 5
   armorValue: 2

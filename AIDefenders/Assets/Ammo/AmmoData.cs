@@ -22,14 +22,19 @@ public class AmmoData : ScriptableObject
     public float lifetime = 5f;
     public GameObject bulletPrefab;
     public float homingTurnRate = 180f;
+    public SfxEvent flightLoopSfx;
 
     [Header("Explosion")]
     public float explosionRadius = 0f;
     public float explosionDamage = 0f;
+    public bool splashHitsPrimary;
+    public SfxEvent explosionSfx;
 
     [Header("Hitscan / Beam")]
     public float hitscanRange = 50f;
     public LayerMask hitMask = ~0;
+    public float heatPerSecond = 20f;
+    public float coolPerSecond = 16f;
 
     [Header("VFX")]
     public GameObject muzzleEffect;
@@ -44,12 +49,21 @@ public class AmmoData : ScriptableObject
         get { return explosionRadius > 0f && explosionDamage > 0f; }
     }
 
-    public void ApplyExplosion(Vector3 point, Target_Base exclude = null, float armorPierce = 3f)
+    public float ExplosionRadius(TurretController attacker)
+    {
+        return Mathf.Max(0f, explosionRadius * TurretResearch.ExplosionRadiusScale(attacker));
+    }
+
+    public void ApplyExplosion(Vector3 point, Target_Base exclude = null, float armorPierce = 3f, TurretController attacker = null)
     {
         if (!HasExplosion)
             return;
 
-        Collider[] hits = Physics.OverlapSphere(point, explosionRadius, hitMask);
+        float radius = ExplosionRadius(attacker);
+        if (radius <= 0.01f)
+            return;
+
+        Collider[] hits = Physics.OverlapSphere(point, radius, hitMask);
         HashSet<Target_Base> damaged = new HashSet<Target_Base>();
 
         foreach (Collider col in hits)
@@ -66,13 +80,17 @@ public class AmmoData : ScriptableObject
 
             Vector3 closest = col.ClosestPoint(point);
             float distance = Vector3.Distance(point, closest);
-            float multiplier = Mathf.Clamp01(1f - distance / explosionRadius);
+            float multiplier = Mathf.Clamp01(1f - distance / radius);
             float splash = explosionDamage * multiplier;
 
             if (splash > 0f)
-                target.TakeDamage(splash, armorPierce);
+            {
+                target.TakeDamage(splash, armorPierce, 0, attacker);
+                TurretResearch.TryVacuumPull(attacker, target, point);
+            }
         }
 
-        Debug.DrawLine(point, point + Vector3.up * explosionRadius, Color.orange, 0.35f);
+        GameSfx.PlayWorld(explosionSfx, point);
+        Debug.DrawLine(point, point + Vector3.up * radius, Color.orange, 0.35f);
     }
 }

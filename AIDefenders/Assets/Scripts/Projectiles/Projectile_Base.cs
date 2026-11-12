@@ -147,7 +147,13 @@ public abstract class Projectile_Base : MonoBehaviour
     protected virtual void OnHitTarget(Target_Base target, Vector3 point)
     {
         if (target != null)
-            target.TakeDamage(damage, armorPierce, TurretResearch.WeakspotBonus(sourceTurret, target), sourceTurret);
+            target.TakeDamage(
+                damage,
+                armorPierce,
+                TurretResearch.WeakspotBonus(sourceTurret, target),
+                sourceTurret,
+                false,
+                TurretResearch.DirectPierceCap(sourceTurret));
     }
 
     protected virtual void OnHitWorld(Vector3 point)

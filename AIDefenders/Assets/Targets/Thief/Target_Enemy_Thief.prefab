@@ -705,7 +705,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb74c00b0a6ade840a2af79eabbc6f60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_Thief
-  maxHP: 60
+  maxHP: 700
   currentHP: 0
   moveSpeed: 10
   armorValue: 0
@@ -732,9 +732,9 @@ MonoBehaviour:
   - {fileID: 4013353832147482213}
   - {fileID: 5027012318743665495}
   rigidbody: {fileID: 7656583036572699118}
-  footstep: {fileID: 0}
+  footstep: {fileID: 11400000, guid: f619466692751654d9fa6d8a8c381441, type: 2}
   vocal: {fileID: 0}
-  death: {fileID: 0}
+  death: {fileID: 11400000, guid: 78190dc868bbaf246983d84051daea2e, type: 2}
   footstepInterval: 0.38
   vocalInterval: {x: 4, y: 11}
   killFunds: 10

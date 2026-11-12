@@ -5,11 +5,20 @@ using UnityEngine.InputSystem;
 
 public class CCTVSkill_IdentificationDart : CCTVActiveSkill
 {
+    protected override string DefaultIconResource
+    {
+        get { return "UI/SkillIcons/IdentificationDart"; }
+    }
+
     public GameObject dartPrefab;
     public float dartSpeed = 40f;
     public float dartGravity = 0f;
     public float dartLifetime = 5f;
     public float muzzleOffset = 1.6f;
+    public float homingCone = 16f;
+    public float homingTurnRate = 55f;
+    public float homingAimBias = 0.2f;
+    public float homingRange = 90f;
     public SfxEvent fireSfx;
 
     bool primed;
@@ -106,6 +115,14 @@ public class CCTVSkill_IdentificationDart : CCTVActiveSkill
             direction = transform.forward;
         direction.Normalize();
 
+        Target_Base guide = FindTargetNearCrosshair(origin, direction);
+        if (guide != null && homingAimBias > 0f)
+        {
+            Vector3 toTarget = guide.GetAimPoint(origin) - origin;
+            if (toTarget.sqrMagnitude > 0.0001f)
+                direction = Vector3.Slerp(direction, toTarget.normalized, Mathf.Clamp01(homingAimBias)).normalized;
+        }
+
         Quaternion rotation = Quaternion.LookRotation(direction);
         GameObject spawned = Instantiate(dartPrefab, origin, rotation);
         IdentificationDart dart = spawned.GetComponent<IdentificationDart>();
@@ -119,13 +136,51 @@ public class CCTVSkill_IdentificationDart : CCTVActiveSkill
             dartLifetime,
             cctv,
             asEnemy,
-            transform
+            transform,
+            guide,
+            homingTurnRate
         );
         GameSfx.PlayWorld(fireSfx, origin);
 
         primed = false;
         armedContext = null;
         StartCooldown();
+    }
+
+    Target_Base FindTargetNearCrosshair(Vector3 origin, Vector3 aimDir)
+    {
+        Target_Base[] targets = Object.FindObjectsByType<Target_Base>(FindObjectsSortMode.None);
+        Target_Base best = null;
+        float cone = Mathf.Max(1f, homingCone);
+        float maxRange = homingRange > 0.01f ? homingRange : 90f;
+        float bestAngle = cone;
+        float bestDist = maxRange;
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Target_Base target = targets[i];
+            if (target == null || target.isDead || target.isSample)
+                continue;
+
+            Vector3 toTarget = target.GetAimPoint(origin) - origin;
+            float dist = toTarget.magnitude;
+            if (dist < 0.4f || dist > maxRange)
+                continue;
+
+            float angle = Vector3.Angle(aimDir, toTarget);
+            if (angle > cone)
+                continue;
+            if (best != null && angle > bestAngle + 0.01f)
+                continue;
+            if (best != null && angle >= bestAngle - 0.01f && dist >= bestDist)
+                continue;
+
+            best = target;
+            bestAngle = angle;
+            bestDist = dist;
+        }
+
+        return best;
     }
 
     void CancelPrime()

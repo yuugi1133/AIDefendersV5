@@ -7,6 +7,9 @@ public class TurretUpgradeTier
     public GameObject visualRoot;
     public Transform barrel;
     public Transform firePoint;
+    public Transform[] muzzles;
+    public Transform[] barrels;
+    public float barrelSpinSpeed = 720f;
     public float damageScale = 1f;
     public float fireDelay = 0.5f;
     public int maxAmmo = 10;

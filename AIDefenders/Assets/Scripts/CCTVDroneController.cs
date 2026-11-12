@@ -29,6 +29,12 @@ public class CCTVDroneController : MonoBehaviour
     public float maxLoopVolume = 0.55f;
     public float loopVolumeSmooth = 5f;
 
+    [Header("Ground")]
+    public LayerMask groundMask;
+    public float hullRadius = 0.85f;
+    public float skinWidth = 0.08f;
+    public int maxGroundBounces = 5;
+
     [Header("Refs")]
     public CCTVMoveLimit moveLimit;
 
@@ -60,6 +66,8 @@ public class CCTVDroneController : MonoBehaviour
         Collider hull = GetComponent<Collider>();
         if (hull != null)
             hull.isTrigger = true;
+        if (hullRadius < 0.05f)
+            hullRadius = 0.85f;
 
         bodyRenderers = GetComponents<Renderer>();
         zoomCameras = GetComponentsInChildren<Camera>(true);
@@ -95,6 +103,7 @@ public class CCTVDroneController : MonoBehaviour
 
     void OnDestroy()
     {
+        SetCursorLocked(false);
         if (waveDirector == null)
             return;
 
@@ -142,6 +151,9 @@ public class CCTVDroneController : MonoBehaviour
 
     void Update()
     {
+        if (BattlePauseMenu.IsPaused)
+            return;
+
         TickFlightLoop();
         if (!flying)
             return;
@@ -156,8 +168,8 @@ public class CCTVDroneController : MonoBehaviour
             return;
 
         ReadLook(out float mouseX, out float mouseY);
-        yaw += mouseX * mouseSensitivity;
-        pitch = Mathf.Clamp(pitch - mouseY * mouseSensitivity, minPitch, maxPitch);
+        yaw += mouseX * mouseSensitivity * GameAudioSettings.LookSensitivity;
+        pitch = Mathf.Clamp(pitch - mouseY * mouseSensitivity * GameAudioSettings.LookSensitivity, minPitch, maxPitch);
         transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
 
         UpdateZoom();
@@ -206,14 +218,16 @@ public class CCTVDroneController : MonoBehaviour
         Vector3 velocity = body.linearVelocity;
 
         if (wish.sqrMagnitude > 0.0001f)
-            velocity += wish.normalized * acceleration * Time.fixedDeltaTime;
+            velocity += wish.normalized * acceleration * GameAudioSettings.MoveSensitivity * Time.fixedDeltaTime;
         else
             velocity = Vector3.MoveTowards(velocity, Vector3.zero, brake * Time.fixedDeltaTime);
 
-        if (velocity.magnitude > maxSpeed)
-            velocity = velocity.normalized * maxSpeed;
+        float speedLimit = maxSpeed * GameAudioSettings.MoveSensitivity;
+        if (velocity.magnitude > speedLimit)
+            velocity = velocity.normalized * speedLimit;
 
         velocity = ConstrainToLimit(velocity);
+        velocity = ConstrainToGround(velocity);
         body.linearVelocity = velocity;
     }
 
@@ -315,6 +329,58 @@ public class CCTVDroneController : MonoBehaviour
             velocity += dir * outward;
 
         velocity += dir * pullBackStrength * Time.fixedDeltaTime;
+        return velocity;
+    }
+
+    Vector3 ConstrainToGround(Vector3 velocity)
+    {
+        int mask = CombatCollision.GroundMaskOrOverride(groundMask);
+        if (mask == 0)
+            return velocity;
+
+        float radius = Mathf.Max(0.05f, hullRadius);
+        float skin = Mathf.Max(0.01f, skinWidth);
+        Vector3 pos = body.position;
+        const QueryTriggerInteraction query = QueryTriggerInteraction.Ignore;
+
+        float probe = radius * 6f;
+        Vector3 upOrigin = pos + Vector3.up * probe;
+        if (Physics.SphereCast(upOrigin, radius, Vector3.down, out RaycastHit down, probe + radius, mask, query))
+        {
+            float minY = down.point.y + radius + skin;
+            if (pos.y < minY)
+            {
+                pos.y = minY;
+                body.position = pos;
+                if (velocity.y < 0f)
+                    velocity.y = 0f;
+            }
+        }
+
+        Vector3 remaining = velocity * Time.fixedDeltaTime;
+        int bounces = Mathf.Max(1, maxGroundBounces);
+        for (int i = 0; i < bounces; i++)
+        {
+            float distance = remaining.magnitude;
+            if (distance < 0.0001f)
+                break;
+
+            Vector3 dir = remaining / distance;
+            if (Physics.SphereCast(pos, radius, dir, out RaycastHit hit, distance + skin, mask, query))
+            {
+                float allowed = hit.distance - skin;
+                if (allowed < 0f)
+                    allowed = 0f;
+                pos += dir * allowed;
+                remaining = Vector3.ProjectOnPlane(remaining - dir * allowed, hit.normal);
+                velocity = Vector3.ProjectOnPlane(velocity, hit.normal);
+            }
+            else
+            {
+                break;
+            }
+        }
+
         return velocity;
     }
 

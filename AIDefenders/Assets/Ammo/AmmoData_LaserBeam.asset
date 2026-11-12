@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AmmoData_LaserBeam
   m_EditorClassIdentifier: Assembly-CSharp::AmmoData
   fireMode: 3
-  damage: 10
+  damage: 18
   bulletSpeed: 0
   gravity: 0
   lifetime: 0
@@ -25,6 +25,8 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  heatPerSecond: 10
+  coolPerSecond: 8
   muzzleEffect: {fileID: 0}
   trailEffect: {fileID: 0}
   impactEffect: {fileID: 0}

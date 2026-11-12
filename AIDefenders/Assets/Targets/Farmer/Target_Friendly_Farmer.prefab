@@ -97,7 +97,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a52601ce95491de419257b0aafa1e92b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_Farmer
-  maxHP: 100
+  maxHP: 400
   currentHP: 0
   moveSpeed: 8
   armorValue: 0
@@ -124,9 +124,9 @@ MonoBehaviour:
   - {fileID: 2380366649017564443}
   - {fileID: 6014847303423103017}
   rigidbody: {fileID: 8194689637991382162}
-  footstep: {fileID: 0}
+  footstep: {fileID: 11400000, guid: f619466692751654d9fa6d8a8c381441, type: 2}
   vocal: {fileID: 0}
-  death: {fileID: 0}
+  death: {fileID: 11400000, guid: 60f5292ff282b744c8d6f5c6f445b73b, type: 2}
   footstepInterval: 0.38
   vocalInterval: {x: 4, y: 11}
   passFunds: 15

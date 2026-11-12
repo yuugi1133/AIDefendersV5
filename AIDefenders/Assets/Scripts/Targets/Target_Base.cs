@@ -80,12 +80,14 @@ public class Target_Base : MonoBehaviour
     public SfxEvent footstep;
     public SfxEvent vocal;
     public SfxEvent death;
+    public SfxEvent engineLoop;
     public float footstepInterval = 0.38f;
     public Vector2 vocalInterval = new Vector2(4f, 11f);
 
     readonly List<StatusEffect> statusEffects = new List<StatusEffect>();
     float footstepTimer;
     float vocalTimer;
+    AudioSource engineSource;
 
     public IReadOnlyList<StatusEffect> StatusEffects
     {
@@ -111,6 +113,18 @@ public class Target_Base : MonoBehaviour
         if (StickToGround)
             SnapToGround();
         vocalTimer = RandomVocalWait();
+        StartEngineLoop();
+    }
+
+    void OnEnable()
+    {
+        if (!isDead && !reachedGoal)
+            StartEngineLoop();
+    }
+
+    void OnDisable()
+    {
+        StopEngineLoop();
     }
 
     void Update()
@@ -118,6 +132,7 @@ public class Target_Base : MonoBehaviour
         if (isSample)
             return;
 
+        TickEnginePause();
         if (isDead)
             return;
 
@@ -332,6 +347,14 @@ public class Target_Base : MonoBehaviour
                 velocity = alongSlope.normalized * speed;
         }
 
+        if (pullTimer > 0f)
+        {
+            velocity += pullVelocity;
+            pullTimer -= Time.fixedDeltaTime;
+            if (pullTimer <= 0f)
+                pullVelocity = Vector3.zero;
+        }
+
         rigidbody.linearVelocity = velocity;
 
         if (animator)
@@ -472,27 +495,33 @@ public class Target_Base : MonoBehaviour
 
     int GetGroundMask()
     {
-        if (groundMask.value != 0)
-            return groundMask.value;
-
-        int mask = Physics.DefaultRaycastLayers;
-        mask &= ~LayerMask.GetMask("Enemy", "Friendly", "Turret", "Bullet", "Ignore Raycast");
-        return mask;
+        return CombatCollision.GroundMaskOrOverride(groundMask);
     }
 
-    TurretController lastAttacker;
+    protected TurretController lastAttacker;
+    protected bool lastHitFromStatus;
+    Vector3 pullVelocity;
+    float pullTimer;
 
-    public virtual void TakeDamage(float damage, float armorPierce = 3f, int bonusTrueDamage = 0, TurretController attacker = null)
+    public virtual void TakeDamage(float damage, float armorPierce = 3f, int bonusTrueDamage = 0, TurretController attacker = null, bool fromStatus = false, float pierceScaleCap = 1f)
     {
         if (isDead)
             return;
 
+        if (attacker != null && !fromStatus)
+        {
+            damage *= TurretResearch.FriendlyDamageScale(attacker, this);
+            TurretResearch.OnDealtDamage(attacker, this);
+        }
+
         float pierceDelta = armorPierce - armorValue;
-        float applied = damage * Mathf.Clamp(pierceDelta, 0f, 1f);
+        float cap = Mathf.Max(0.01f, pierceScaleCap);
+        float applied = damage * Mathf.Clamp(pierceDelta, 0f, cap);
         float total = applied + Mathf.Max(0, bonusTrueDamage);
         if (total > 0.0001f)
         {
             currentHP -= total;
+            lastHitFromStatus = fromStatus;
             if (attacker != null)
                 lastAttacker = attacker;
         }
@@ -558,6 +587,25 @@ public class Target_Base : MonoBehaviour
     public bool HasStatus(string effectId)
     {
         return FindStatus(effectId) != null;
+    }
+
+    public T GetStatus<T>(string effectId) where T : StatusEffect
+    {
+        return FindStatus(effectId) as T;
+    }
+
+    public void PullToward(Vector3 worldPoint, float speed, float duration)
+    {
+        if (isDead || isSample || rigidbody == null)
+            return;
+
+        Vector3 delta = worldPoint - rigidbody.position;
+        delta.y = 0f;
+        if (delta.sqrMagnitude < 0.01f)
+            return;
+
+        pullVelocity = delta.normalized * Mathf.Max(0f, speed);
+        pullTimer = Mathf.Max(0.05f, duration);
     }
 
     public void ClearStatusEffects()
@@ -637,6 +685,7 @@ public class Target_Base : MonoBehaviour
         rigidbody.isKinematic = true;
 
         OnKilled(FindWaveDirector());
+        StopEngineLoop();
         PlaySfx(death);
 
         if (PlayAnimatorDeath && animator)
@@ -671,6 +720,7 @@ public class Target_Base : MonoBehaviour
 
         reachedGoal = true;
         ClearStatusEffects();
+        StopEngineLoop();
         OnReachedGoal(FindWaveDirector());
         RemoveAtGoal();
     }
@@ -785,6 +835,33 @@ public class Target_Base : MonoBehaviour
     void PlaySfx(SfxEvent sfx)
     {
         GameSfx.PlayWorld(sfx, transform.position);
+    }
+
+    void StartEngineLoop()
+    {
+        if (isSample || isDead || reachedGoal || engineLoop == null || engineSource != null)
+            return;
+        engineSource = GameSfx.PlayAttachedLoop(engineLoop, transform);
+    }
+
+    void StopEngineLoop()
+    {
+        GameSfx.StopAttached(engineSource);
+        engineSource = null;
+    }
+
+    void TickEnginePause()
+    {
+        if (engineSource == null)
+            return;
+        if (BattlePauseMenu.IsPaused)
+        {
+            if (engineSource.isPlaying)
+                engineSource.Pause();
+            return;
+        }
+        if (!engineSource.isPlaying && engineSource.clip != null)
+            engineSource.UnPause();
     }
 
     protected virtual IEnumerator DeathRoutine()

@@ -259,7 +259,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b4f02d5c9e3507fb2dae1f3a5c76928, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_ThiefBoat
-  maxHP: 600
+  maxHP: 14000
   currentHP: 0
   moveSpeed: 4
   armorValue: 0.7
@@ -292,7 +292,8 @@ MonoBehaviour:
   rigidbody: {fileID: 7238493058172048197}
   footstep: {fileID: 0}
   vocal: {fileID: 0}
-  death: {fileID: 0}
+  death: {fileID: 11400000, guid: 680d684347d3b234da0e11533d7c56bd, type: 2}
+  engineLoop: {fileID: 11400000, guid: 9d4a2c6e8b174f31a5c0d9e2f7b3a814, type: 2}
   footstepInterval: 0.38
   vocalInterval: {x: 4, y: 11}
   killFunds: 70

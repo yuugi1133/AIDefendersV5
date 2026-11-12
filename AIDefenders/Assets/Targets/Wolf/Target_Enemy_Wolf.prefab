@@ -1236,7 +1236,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56f67b06764ad834eb72ba888d1cc1e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_Wolf
-  maxHP: 40
+  maxHP: 340
   currentHP: 0
   moveSpeed: 12
   armorValue: 0

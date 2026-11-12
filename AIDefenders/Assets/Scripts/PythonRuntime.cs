@@ -638,11 +638,13 @@ public static class PythonRuntime
 
     public static bool TryStartYoloTraining(
         string dataYaml,
+        string modelYaml,
         int epochs,
         int batch,
         string datasetName,
         string resultPath,
         string weightsDir,
+        string stopFile,
         out Process process,
         out string error)
     {
@@ -664,6 +666,9 @@ public static class PythonRuntime
             return false;
         }
 
+        if (string.IsNullOrEmpty(modelYaml))
+            modelYaml = "yolov8n.pt";
+
         string batPath = Path.Combine(serverDir, "_train_yolo.bat");
         try
         {
@@ -672,11 +677,13 @@ public static class PythonRuntime
                 venvPython,
                 scriptPath,
                 dataYaml,
+                modelYaml,
                 epochs,
                 batch,
                 datasetName,
                 resultPath,
-                weightsDir));
+                weightsDir,
+                stopFile));
         }
         catch (Exception e)
         {
@@ -778,11 +785,13 @@ public static class PythonRuntime
         string venvPython,
         string scriptPath,
         string dataYaml,
+        string modelYaml,
         int epochs,
         int batch,
         string datasetName,
         string resultPath,
-        string weightsDir)
+        string weightsDir,
+        string stopFile)
     {
         var sb = new StringBuilder();
         sb.AppendLine("@echo off");
@@ -798,12 +807,14 @@ public static class PythonRuntime
             Quote(venvPython) +
             " -u " + Quote(scriptPath) +
             " --data " + Quote(dataYaml) +
+            " --model " + Quote(modelYaml) +
             " --epochs " + epochs.ToString(CultureInfo.InvariantCulture) +
             " --batch " + batch.ToString(CultureInfo.InvariantCulture) +
             " --workers 0" +
             " --dataset " + Quote(datasetName) +
             " --result " + Quote(resultPath) +
-            " --weights-dir " + Quote(weightsDir));
+            " --weights-dir " + Quote(weightsDir) +
+            (string.IsNullOrEmpty(stopFile) ? "" : " --stop-file " + Quote(stopFile)));
         sb.AppendLine("if errorlevel 1 goto :fail");
         sb.AppendLine("echo.");
         sb.AppendLine("echo Training finished.");

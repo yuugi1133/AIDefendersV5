@@ -14,7 +14,10 @@ public class TurretPlatformPlacer : MonoBehaviour
     public float overlapPadding = 0.9f;
     public int platformBaseCost = 40;
     public int platformMaxCount = 8;
+    [Tooltip("전장에 동시에 둘 수 있는 포탑 수입니다. 보관함의 포탑은 포함하지 않습니다.")]
+    public int turretMaxCount = 6;
     public int platformSellPrice = 5;
+    public GameObject turretWorkLoopFx;
 
     WaveDirector waveDirector;
     CCTVController cctv;
@@ -108,6 +111,21 @@ public class TurretPlatformPlacer : MonoBehaviour
         get { return GetPlatformCost(); }
     }
 
+    public int TurretCount
+    {
+        get { return CountTurrets(); }
+    }
+
+    public int TurretMaxCount
+    {
+        get { return Mathf.Max(0, turretMaxCount); }
+    }
+
+    public bool IsTurretCapReached
+    {
+        get { return CountTurrets() >= TurretMaxCount; }
+    }
+
     public bool HasPlatformPrefab
     {
         get { return platformPrefab != null; }
@@ -157,6 +175,8 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     void Update()
     {
+        if (BattlePauseMenu.IsPaused)
+            return;
         if (waveDirector == null)
             waveDirector = FindFirstObjectByType<WaveDirector>();
         if (cctv == null)
@@ -326,7 +346,7 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     void BeginTurretPlace(TurretBuildOption option)
     {
-        if (option == null)
+        if (option == null || IsTurretCapReached)
             return;
 
         ClearSelection();
@@ -341,7 +361,7 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     void BeginStoredPlace(int index)
     {
-        if (index < 0 || index >= storedTurrets.Count)
+        if (index < 0 || index >= storedTurrets.Count || IsTurretCapReached)
             return;
 
         StoredTurret stored = storedTurrets[index];
@@ -442,7 +462,7 @@ public class TurretPlatformPlacer : MonoBehaviour
             ghost.transform.SetParent(null);
             ghost.transform.position = hoverPlatform.GetMountPosition();
             ghost.transform.rotation = hoverPlatform.transform.rotation;
-            canPlace = hoverPlatform.IsEmpty && CanAfford(pendingTurretCost);
+            canPlace = hoverPlatform.IsEmpty && CanAfford(pendingTurretCost) && !IsTurretCapReached;
             TintGhost(canPlace ? validColor : invalidColor);
             return;
         }
@@ -506,7 +526,7 @@ public class TurretPlatformPlacer : MonoBehaviour
     {
         TurretPlatform platform = hoverPlatform;
         GameObject prefab = draggingPrefab;
-        if (platform == null || !platform.IsEmpty || prefab == null)
+        if (platform == null || !platform.IsEmpty || prefab == null || IsTurretCapReached)
         {
             CancelPlace();
             return;
@@ -877,6 +897,13 @@ public class TurretPlatformPlacer : MonoBehaviour
         if (weapon == null)
             return "없음";
 
+        if (weapon.UsesHeat)
+        {
+            if (weapon.IsOverheated)
+                return "과열 냉각 중  " + weapon.CurrentAmmo + "/" + weapon.MagazineSize;
+            return "과열  " + weapon.CurrentAmmo + "/" + weapon.MagazineSize;
+        }
+
         if (weapon.IsReloading)
             return weapon.AmmoLabel + "  재장전 중";
 
@@ -1071,6 +1098,29 @@ public class TurretPlatformPlacer : MonoBehaviour
             if (platform.gameObject.name.Contains("미리보기"))
                 continue;
 
+            count++;
+        }
+
+        return count;
+    }
+
+    int CountTurrets()
+    {
+        TurretPlatform[] platforms = FindObjectsByType<TurretPlatform>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None
+        );
+
+        int count = 0;
+        for (int i = 0; i < platforms.Length; i++)
+        {
+            TurretPlatform platform = platforms[i];
+            if (platform == null || platform.mountedTurret == null)
+                continue;
+            if (ghost != null && platform.transform.IsChildOf(ghost.transform))
+                continue;
+            if (platform.gameObject.name.Contains("미리보기"))
+                continue;
             count++;
         }
 
@@ -1288,12 +1338,7 @@ public class TurretPlatformPlacer : MonoBehaviour
 
     int GetGroundMask()
     {
-        if (groundMask.value != 0)
-            return groundMask.value;
-
-        int mask = Physics.DefaultRaycastLayers;
-        mask &= ~LayerMask.GetMask("Enemy", "Friendly", "Turret", "Bullet", "Ignore Raycast");
-        return mask;
+        return CombatCollision.GroundMaskOrOverride(groundMask);
     }
 
     Vector3 GetMouseScreenPosition()

@@ -73,14 +73,15 @@ MonoBehaviour:
   overlapPadding: 0.9
   platformBaseCost: 40
   platformMaxCount: 8
+  turretMaxCount: 6
   platformSellPrice: 5
   turretOptions:
   - displayName: Turret_Test
     prefab: {fileID: 9211372644908279419, guid: 268533bc8e4219e40a05aa364bd53732, type: 3}
     cost: 50
     sellPrice: 25
-  - displayName: Turret_Test MG
-    prefab: {fileID: 4558551398018450366, guid: d9b765170d3034842a65937d764a4e52, type: 3}
+  - displayName: "\uAE30\uAD00\uCD1D \uD3EC\uD0D1"
+    prefab: {fileID: 7697252112534469927, guid: c25490ecfb2427d47838d937fc31f73a, type: 3}
     cost: 80
     sellPrice: 40
   - displayName: Turret_Test Missile
@@ -91,6 +92,10 @@ MonoBehaviour:
     prefab: {fileID: 6692554674478039121, guid: fc00c3faf402e744ea7d51f07648d55d, type: 3}
     cost: 150
     sellPrice: 75
+  - displayName: "\uD50C\uB77C\uC988\uB9C8 \uD3EC\uD0D1"
+    prefab: {fileID: 9211372644908279419, guid: 74aac73f08184324bb9ebf39d078b0e0, type: 3}
+    cost: 140
+    sellPrice: 70
 --- !u!114 &5303192905100796401
 MonoBehaviour:
   m_ObjectHideFlags: 0

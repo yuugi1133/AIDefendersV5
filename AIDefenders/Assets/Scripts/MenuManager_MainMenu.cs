@@ -1,10 +1,13 @@
 using TMPro;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 [System.Serializable]
 public class CampaignStageEntry
 {
+    public int chapterId = 1;
+    public string chapterName = "초원";
     public string displayName = "Stage";
     public string sceneName;
     public string description;
@@ -13,8 +16,16 @@ public class CampaignStageEntry
 public class MenuManager_MainMenu : MonoBehaviour
 {
     public CampaignStageEntry[] campaignStages;
+    [Tooltip("켜면 이전 스테이지를 클리어해야 다음 스테이지를 선택할 수 있습니다.")]
+    public bool requireStageUnlocks;
 
     GameObject mainMenuPanel;
+    static bool titleEntered;
+    GameObject titlePanel;
+    AudioSettingsUi settingsPanel;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetTitle() { titleEntered = false; }
     GameObject campaignPanel;
     bool showPythonMissingDialog;
     bool showVenvDialog;
@@ -31,6 +42,25 @@ public class MenuManager_MainMenu : MonoBehaviour
         EnsureDefaultStages();
         ApplyMainMenuFonts();
         BuildCampaignPanel();
+        BuildStyledMainMenu();
+        Canvas canvas = FindMenuCanvas();
+        if (titleEntered) CheckPythonEnvironment();
+        else
+        {
+            if (mainMenuPanel != null) mainMenuPanel.SetActive(false);
+            if (canvas != null)
+                titlePanel = TitleScreenUi.Create(canvas.transform, EnterMainMenu);
+            else
+                EnterMainMenu();
+        }
+    }
+
+    void EnterMainMenu()
+    {
+        if (titleEntered) return;
+        titleEntered = true;
+        if (titlePanel != null) Destroy(titlePanel);
+        mainMenuPanel.SetActive(true);
         CheckPythonEnvironment();
     }
 
@@ -109,7 +139,7 @@ public class MenuManager_MainMenu : MonoBehaviour
         {
             showVenvDialog = true;
             gpuTorchUpgrade = true;
-            Debug.LogWarning("NVIDIA GPU가 감지되었지만 CUDA PyTorch가 아닙니다. GPU용 torch 설치가 필요합니다.");
+            Debug.LogWarning("NVIDIA GPU에서 PyTorch 연산을 실행할 수 없습니다. GPU와 호환되는 torch 설치가 필요합니다.");
         }
     }
 
@@ -132,6 +162,7 @@ public class MenuManager_MainMenu : MonoBehaviour
 
     void OnGUI()
     {
+        if (!titleEntered) return;
         if (showSetupProgress)
         {
             DrawMessageDialog(
@@ -203,7 +234,7 @@ public class MenuManager_MainMenu : MonoBehaviour
         GUILayout.Label("Python " + PythonRuntime.RequiredVersionLabel + "은 확인되었습니다.");
         if (gpuTorchUpgrade)
         {
-            GUILayout.Label("가상환경은 있지만 CPU용 PyTorch가 설치되어 있습니다.");
+            GUILayout.Label("가상환경은 있지만 현재 PyTorch로 GPU 연산을 실행할 수 없습니다.");
             GUILayout.Label("NVIDIA GPU에 맞는 CUDA PyTorch를 설치합니다. 설치에 실패하면 CPU용으로 되돌립니다.");
         }
         else
@@ -250,6 +281,7 @@ public class MenuManager_MainMenu : MonoBehaviour
     {
         if (campaignPanel == null)
             BuildCampaignPanel();
+        ShowChapters();
 
         if (mainMenuPanel != null)
             mainMenuPanel.SetActive(false);
@@ -282,145 +314,130 @@ public class MenuManager_MainMenu : MonoBehaviour
         {
             new CampaignStageEntry
             {
-                displayName = "Grassfield 1",
+                chapterId = 1,
+                chapterName = "초원",
+                displayName = "1-1 초원 · 낮",
                 sceneName = "Grassfield_1",
-                description = "초원 지대"
+                description = "챕터 1 · 초원 지대 / 낮"
             },
             new CampaignStageEntry
             {
-                displayName = "Grassfield 2",
+                chapterId = 1,
+                chapterName = "초원",
+                displayName = "1-2 초원 · 저녁",
                 sceneName = "Grassfield_2",
-                description = "초원 지대"
+                description = "챕터 1 · 초원 지대 / 저녁"
             },
             new CampaignStageEntry
             {
-                displayName = "Grassfield 3",
+                chapterId = 1,
+                chapterName = "초원",
+                displayName = "1-3 초원 · 밤",
                 sceneName = "Grassfield_3",
-                description = "초원 지대"
+                description = "챕터 1 · 초원 지대 / 밤"
+            },
+            new CampaignStageEntry
+            {
+                chapterId = 2,
+                chapterName = "사막",
+                displayName = "2-1 사막 · 낮",
+                sceneName = "Desert_1",
+                description = "챕터 2 · 사막 지대 / 낮"
+            },
+            new CampaignStageEntry
+            {
+                chapterId = 3,
+                chapterName = "도시",
+                displayName = "3-1 도시 · 낮",
+                sceneName = "City_1",
+                description = "챕터 3 · 도심 방어선 / 낮"
             }
         };
     }
 
+    CampaignSelectionUi campaignUi;
+
     void BuildCampaignPanel()
     {
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null)
-            canvas = FindFirstObjectByType<Canvas>();
-        if (canvas == null)
-            return;
-
-        Transform canvasRoot = canvas.transform;
-        Transform existingMain = canvasRoot.Find("Panel");
-        if (existingMain != null)
-            mainMenuPanel = existingMain.gameObject;
-
-        Transform existingCampaign = canvasRoot.Find("Panel_Campaign");
-        if (existingCampaign != null)
-            Destroy(existingCampaign.gameObject);
-
-        campaignPanel = new GameObject("Panel_Campaign");
-        RectTransform panelRt = campaignPanel.AddComponent<RectTransform>();
-        panelRt.SetParent(canvasRoot, false);
-        UiFont.Stretch(panelRt);
+        Canvas canvas = FindMenuCanvas();
+        if (canvas == null) return;
+        Transform existingMain = canvas.transform.Find("Panel");
+        if (existingMain != null) mainMenuPanel = existingMain.gameObject;
+        Transform existingCampaign = canvas.transform.Find("Panel_Campaign");
+        if (existingCampaign != null) Destroy(existingCampaign.gameObject);
+        campaignPanel = new GameObject("Panel_Campaign", typeof(RectTransform));
+        campaignPanel.transform.SetParent(canvas.transform, false);
+        UiFont.Stretch(campaignPanel.GetComponent<RectTransform>());
+        campaignUi = new CampaignSelectionUi(campaignPanel.transform, campaignStages, requireStageUnlocks, CloseCampaign, LoadScene);
         campaignPanel.SetActive(false);
+    }
 
-        Image dim = UiFont.AddImage(panelRt, "Dim", new Color(0.05f, 0.06f, 0.08f, 0.72f));
-        UiFont.Stretch(dim.rectTransform);
+    public void ShowChapters()
+    {
+        if (campaignUi != null) campaignUi.ShowChapters();
+    }
 
-        Image card = UiFont.AddImage(panelRt, "Card", new Color(0.16f, 0.18f, 0.22f, 0.96f));
-        RectTransform cardRt = card.rectTransform;
-        cardRt.anchorMin = new Vector2(0.5f, 0.5f);
-        cardRt.anchorMax = new Vector2(0.5f, 0.5f);
-        cardRt.pivot = new Vector2(0.5f, 0.5f);
-        cardRt.sizeDelta = new Vector2(720f, 620f);
-        cardRt.anchoredPosition = Vector2.zero;
+    public void ShowChapterStages(int chapterId)
+    {
+        if (campaignUi != null) campaignUi.ShowStages(chapterId);
+    }
 
-        Text title = UiFont.AddText(cardRt, "Title", "스테이지 선택", 36, TextAnchor.MiddleLeft, Color.white, UiType.Title);
-        title.rectTransform.anchorMin = new Vector2(0f, 1f);
-        title.rectTransform.anchorMax = new Vector2(1f, 1f);
-        title.rectTransform.pivot = new Vector2(0.5f, 1f);
-        title.rectTransform.anchoredPosition = new Vector2(0f, -20f);
-        title.rectTransform.sizeDelta = new Vector2(-48f, 56f);
+    void BuildStyledMainMenu()
+    {
+        Canvas canvas = FindMenuCanvas();
+        if (canvas == null) return;
+        if (mainMenuPanel != null) mainMenuPanel.SetActive(false);
+        Image background = UiFont.AddImage(canvas.transform, "MainMenu_Styled", UiSkin.Panel);
+        UiFont.Stretch(background.rectTransform);
+        mainMenuPanel = background.gameObject;
 
-        GameObject list = new GameObject("StageList");
-        RectTransform listRt = list.AddComponent<RectTransform>();
-        listRt.SetParent(cardRt, false);
-        listRt.anchorMin = new Vector2(0f, 0f);
-        listRt.anchorMax = new Vector2(1f, 1f);
-        listRt.offsetMin = new Vector2(28f, 96f);
-        listRt.offsetMax = new Vector2(-28f, -84f);
-
-        if (campaignStages != null)
+        var scaler = canvas.GetComponent<CanvasScaler>();
+        if (scaler != null) { scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution = new Vector2(1920, 1080); scaler.matchWidthOrHeight = .5f; }
+        var rays = new GameObject("MenuRadiance", typeof(RectTransform), typeof(CanvasRenderer), typeof(TitleScreenRays));
+        rays.transform.SetParent(background.transform, false);
+        UiFont.Stretch(rays.GetComponent<RectTransform>());
+        rays.GetComponent<TitleScreenRays>().raycastTarget = false;
+        var logo = new GameObject("MenuLogo", typeof(RectTransform), typeof(RawImage));
+        logo.transform.SetParent(background.transform, false);
+        var logoImage = logo.GetComponent<RawImage>();
+        var logoTexture = Resources.Load<Texture2D>("UI/Title/LogoOneline");
+        logoImage.texture = logoTexture;
+        logoImage.raycastTarget = false;
+        UiSkin.Place(logoImage.rectTransform, new Vector2(.5f, .85f), Vector2.zero,
+            new Vector2(1000, logoTexture != null ? 1000f * logoTexture.height / logoTexture.width : 234));
+        UiLogoDepth.Apply(logoImage);
+        Text subtitle = UiFont.AddText(background.transform, "Subtitle", "인식하고, 연구하고, 방어하라", 28, TextAnchor.MiddleCenter, Color.white, UiType.BodyBold);
+        UiSkin.Place(subtitle.rectTransform, new Vector2(.5f, .70f), Vector2.zero, new Vector2(1000, 60));
+        MenuTurret(background.transform, "Build_Turret_Test Missile", new Vector2(.20f, .59f), -12, true);
+        MenuTurret(background.transform, "Build_Turret_Test Laser", new Vector2(.80f, .59f), 12, false);
+        MenuTurret(background.transform, "Build_Turret_MG", new Vector2(.20f, .37f), 8, true);
+        MenuTurret(background.transform, "Build_Turret_PrecisionShot", new Vector2(.80f, .37f), -8, false);
+        UiSkin.Preview(background.transform, "Build_Turret_MG", new Vector2(.5f, .49f), new Vector2(580, 435));
+        UiSkin.Button(background.transform, "Settings", "설정", UiSkin.Sky, new Vector2(1, 1), new Vector2(-120, -65), new Vector2(180, 76)).onClick.AddListener(() =>
         {
-            for (int i = 0; i < campaignStages.Length; i++)
-                CreateStageButton(listRt, campaignStages[i], i);
-        }
-
-        Button back = CreateTextButton(cardRt, "Button_Back", "뒤로", new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(180f, 48f));
-        back.onClick.AddListener(CloseCampaign);
+            if (!AudioSettingsUi.IsOpen) settingsPanel = AudioSettingsUi.Create(canvas.transform);
+        });
+        UiSkin.Button(background.transform, "ControlsHelp", "조작키 안내", UiSkin.Blue, new Vector2(0, 1), new Vector2(150, -65), new Vector2(240, 76)).onClick.AddListener(() =>
+        {
+            if (!AudioSettingsUi.IsOpen) AudioSettingsUi.CreateHelp(canvas.transform);
+        });
+        UiSkin.Button(background.transform, "Campaign", "캠페인 시작  ›", UiSkin.Gold, new Vector2(.5f, .28f), Vector2.zero, new Vector2(600, 110)).onClick.AddListener(OpenCampaign);
+        UiSkin.Button(background.transform, "TurretLab", "포탑 연구소", UiSkin.Blue, new Vector2(.32f, .15f), Vector2.zero, new Vector2(360, 100)).onClick.AddListener(() => LoadScene("TurretLab"));
+        UiSkin.Button(background.transform, "DatasetFactory", "데이터셋 팩토리", UiSkin.Blue, new Vector2(.55f, .15f), Vector2.zero, new Vector2(420, 100)).onClick.AddListener(() => LoadScene("DatasetGeneratorScene"));
+        UiSkin.Button(background.transform, "Quit", "종료", UiSkin.Navy, new Vector2(.77f, .15f), Vector2.zero, new Vector2(280, 100)).onClick.AddListener(QuitGame);
     }
 
-    void CreateStageButton(Transform parent, CampaignStageEntry stage, int index)
+    static void MenuTurret(Transform parent, string resource, Vector2 anchor, float angle, bool mirror)
     {
-        if (stage == null)
-            return;
-
-        Image image = UiFont.AddImage(parent, string.IsNullOrEmpty(stage.displayName) ? "Stage" : stage.displayName, Color.white);
-        RectTransform rt = image.rectTransform;
-        rt.anchorMin = new Vector2(0f, 1f);
-        rt.anchorMax = new Vector2(1f, 1f);
-        rt.pivot = new Vector2(0.5f, 1f);
-        rt.sizeDelta = new Vector2(0f, 96f);
-        rt.anchoredPosition = new Vector2(0f, -index * 112f);
-
-        bool unlocked = GameProgress.IsStageUnlocked(stage.sceneName);
-        if (!unlocked)
-            image.color = new Color(0.72f, 0.74f, 0.76f, 1f);
-        Button button = image.gameObject.AddComponent<Button>();
-        button.targetGraphic = image;
-        button.interactable = unlocked;
-        string sceneName = stage.sceneName;
-        if (unlocked)
-            button.onClick.AddListener(() => LoadScene(sceneName));
-
-        Color nameColor = unlocked ? new Color(0.12f, 0.13f, 0.15f, 1f) : new Color(0.42f, 0.44f, 0.48f, 1f);
-        Text name = UiFont.AddText(rt, "Name", stage.displayName, 28, TextAnchor.MiddleLeft, nameColor, UiType.TitleMedium);
-        name.rectTransform.anchorMin = new Vector2(0f, 0.45f);
-        name.rectTransform.anchorMax = new Vector2(1f, 1f);
-        name.rectTransform.offsetMin = new Vector2(24f, 0f);
-        name.rectTransform.offsetMax = new Vector2(-24f, -8f);
-
-        string desc = unlocked
-            ? (string.IsNullOrWhiteSpace(stage.description) ? stage.sceneName : stage.description)
-            : "잠김";
-        Text detail = UiFont.AddText(rt, "Detail", desc, 20, TextAnchor.UpperLeft, new Color(0.32f, 0.34f, 0.38f, 1f), UiType.Body);
-        detail.rectTransform.anchorMin = new Vector2(0f, 0f);
-        detail.rectTransform.anchorMax = new Vector2(1f, 0.5f);
-        detail.rectTransform.offsetMin = new Vector2(24f, 12f);
-        detail.rectTransform.offsetMax = new Vector2(-24f, 0f);
-    }
-
-    static Button CreateTextButton(Transform parent, string name, string label, Vector2 anchor, Vector2 pos, Vector2 size)
-    {
-        Image image = UiFont.AddImage(parent, name, Color.white);
-        RectTransform rt = image.rectTransform;
-        rt.anchorMin = anchor;
-        rt.anchorMax = anchor;
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = pos;
-        rt.sizeDelta = size;
-
-        Button button = image.gameObject.AddComponent<Button>();
-        button.targetGraphic = image;
-
-        Text text = UiFont.AddText(rt, "Text", label, 24, TextAnchor.MiddleCenter, new Color(0.12f, 0.13f, 0.15f, 1f), UiType.BodyMedium);
-        UiFont.Stretch(text.rectTransform);
-        return button;
+        var preview = UiSkin.Preview(parent, resource, anchor, new Vector2(360, 270));
+        if (preview == null) return;
+        preview.rectTransform.localRotation = Quaternion.Euler(0, 0, angle);
+        if (mirror) preview.uvRect = new Rect(1, 0, -1, 1);
     }
 
     void ApplyMainMenuFonts()
     {
-        Canvas canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = FindMenuCanvas();
         if (canvas == null)
             return;
 
@@ -438,6 +455,14 @@ public class MenuManager_MainMenu : MonoBehaviour
                  value.IndexOf("AI Def", System.StringComparison.OrdinalIgnoreCase) >= 0);
             UiFont.Apply(text, title ? UiType.Title : UiType.BodyMedium);
         }
+    }
+
+    Canvas FindMenuCanvas()
+    {
+        Canvas canvas = UiFont.FindSceneCanvas(this);
+        if (canvas == null)
+            canvas = SceneLoader.FindSceneCanvas();
+        return canvas;
     }
 
     public void QuitGame()

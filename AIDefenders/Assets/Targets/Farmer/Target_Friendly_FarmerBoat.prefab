@@ -570,7 +570,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a3e91c4b8d24f6ea1c9d0e2f4b65817, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_FarmerBoat
-  maxHP: 650
+  maxHP: 16000
   currentHP: 0
   moveSpeed: 4
   armorValue: 0.7
@@ -606,7 +606,8 @@ MonoBehaviour:
   rigidbody: {fileID: 4128493058172048194}
   footstep: {fileID: 0}
   vocal: {fileID: 0}
-  death: {fileID: 0}
+  death: {fileID: 11400000, guid: 680d684347d3b234da0e11533d7c56bd, type: 2}
+  engineLoop: {fileID: 11400000, guid: 9d4a2c6e8b174f31a5c0d9e2f7b3a814, type: 2}
   footstepInterval: 0.38
   vocalInterval: {x: 4, y: 11}
   passFunds: 40

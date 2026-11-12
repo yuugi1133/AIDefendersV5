@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7123554aa18fc10498a03ac670fc2a4c, type: 3}
+  m_Name: AmmoData_LaserBeam
+  m_EditorClassIdentifier: Assembly-CSharp::AmmoData
+  fireMode: 3
+  damage: 10
+  bulletSpeed: 0
+  gravity: 0
+  lifetime: 0
+  bulletPrefab: {fileID: 0}
+  homingTurnRate: 0
+  explosionRadius: 0
+  explosionDamage: 0
+  hitscanRange: 40
+  hitMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  muzzleEffect: {fileID: 0}
+  trailEffect: {fileID: 0}
+  impactEffect: {fileID: 0}
+  beamWidth: 0.14
+  beamColor: {r: 1, g: 0.5071376, b: 0.07843137, a: 0.9}
+  beamCoreColor: {r: 1, g: 0.92, b: 0.7, a: 1}

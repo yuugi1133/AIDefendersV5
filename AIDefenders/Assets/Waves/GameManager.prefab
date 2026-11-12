@@ -74,8 +74,8 @@ MonoBehaviour:
     cost: 50
     sellPrice: 25
     buildTime: 3
-  - displayName: Turret_Test MG
-    prefab: {fileID: 4558551398018450366, guid: d9b765170d3034842a65937d764a4e52, type: 3}
+  - displayName: "\uAE30\uAD00\uCD1D \uD3EC\uD0D1"
+    prefab: {fileID: 7697252112534469927, guid: c25490ecfb2427d47838d937fc31f73a, type: 3}
     cost: 80
     sellPrice: 40
     buildTime: 3
@@ -89,6 +89,11 @@ MonoBehaviour:
     cost: 150
     sellPrice: 75
     buildTime: 3
+  - displayName: "\uD50C\uB77C\uC988\uB9C8 \uD3EC\uD0D1"
+    prefab: {fileID: 9211372644908279419, guid: 74aac73f08184324bb9ebf39d078b0e0, type: 3}
+    cost: 140
+    sellPrice: 70
+    buildTime: 4
   groundMask:
     serializedVersion: 2
     m_Bits: 0
@@ -96,6 +101,7 @@ MonoBehaviour:
   overlapPadding: 0.9
   platformBaseCost: 40
   platformMaxCount: 8
+  turretMaxCount: 6
   platformSellPrice: 5
 --- !u!114 &490775720283367759
 MonoBehaviour:

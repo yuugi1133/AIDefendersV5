@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a1c9e4f2b5846d0a3e8c1f0b9d24680, type: 3}
+  m_Name: TurretFire_Bolt
+  m_EditorClassIdentifier: Assembly-CSharp::SfxEvent
+  clips:
+  - {fileID: 8300000, guid: 875f468fb2e04b74b9438d7d11f2618a, type: 3}
+  - {fileID: 8300000, guid: ed18517108e0706408f981314e35bf55, type: 3}
+  - {fileID: 8300000, guid: 81d9a62cde65d174fba0a73b9568e19a, type: 3}
+  - {fileID: 8300000, guid: 98fcb9652819ac747b0d3dad5e12e17d, type: 3}
+  - {fileID: 8300000, guid: e9ae6c20820d8144c9278664891cbe9e, type: 3}
+  volume: 1
+  pitch: {x: 0.97, y: 1.03}

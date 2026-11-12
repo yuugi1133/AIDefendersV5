@@ -184,8 +184,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 1.3, y: 1.3, z: 1.3}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 8028772276485317088}
   m_Father: {fileID: 1094053276817189760}
@@ -2037,13 +2037,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 120d0d39a4dccf949a5077c22ed2c097, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Target_Sheep
-  maxHP: 20
+  maxHP: 180
   currentHP: 0
   moveSpeed: 13
+  armorValue: 0
   isSample: 0
   displayName: "\uC591"
   scoreCoefficient: 10
-  armorValue: 0
   destination: {fileID: 0}
   waypointRadius: 1.8
   arriveDistance: 2.2

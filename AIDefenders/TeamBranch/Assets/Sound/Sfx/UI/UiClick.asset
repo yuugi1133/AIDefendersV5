@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a1c9e4f2b5846d0a3e8c1f0b9d24680, type: 3}
+  m_Name: UiClick
+  m_EditorClassIdentifier: Assembly-CSharp::SfxEvent
+  clips:
+  - {fileID: 8300000, guid: fc2a6e75f5d434247bd2d1b64e7167a3, type: 3}
+  - {fileID: 8300000, guid: 5e200ddecd5ab5b43aa25caab13bfc83, type: 3}
+  - {fileID: 8300000, guid: 58ca19ef155017249b97e7b883516944, type: 3}
+  volume: 1
+  pitch: {x: 0.97, y: 1.03}
